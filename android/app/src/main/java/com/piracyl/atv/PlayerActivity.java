@@ -296,7 +296,7 @@ public class PlayerActivity extends AppCompatActivity {
 
         // Check selected subtitle
         String currentSub = "Subtitles";
-        boolean subDisabled = player.getTrackSelectionParameters().isTrackTypeDisabled(C.TRACK_TYPE_TEXT);
+        boolean subDisabled = player.getTrackSelectionParameters().disabledTrackTypes.contains(C.TRACK_TYPE_TEXT);
         if (subDisabled) {
             currentSub = "Sub: Off";
         } else {
@@ -399,7 +399,7 @@ public class PlayerActivity extends AppCompatActivity {
                     Format format = group.getTrackFormat(i);
                     boolean isSelected = group.isTrackSelected(i);
                     String label = buildSubtitleTrackLabel(format, subOptions.size());
-                    if (isSelected && !player.getTrackSelectionParameters().isTrackTypeDisabled(C.TRACK_TYPE_TEXT)) {
+                    if (isSelected && !player.getTrackSelectionParameters().disabledTrackTypes.contains(C.TRACK_TYPE_TEXT)) {
                         selectedIndex = subOptions.size();
                     }
                     subOptions.add(new SubtitleTrackOption(group, i, label));
@@ -537,13 +537,11 @@ public class PlayerActivity extends AppCompatActivity {
                 return true;
 
             case KeyEvent.KEYCODE_CAPTIONS:
-            case 175: // KEYCODE_CAPTIONS
                 showSubtitleTrackDialog();
                 return true;
 
             case KeyEvent.KEYCODE_MEDIA_AUDIO_TRACK:
             case KeyEvent.KEYCODE_MENU:
-            case 82: // KEYCODE_MENU
                 showAudioTrackDialog();
                 return true;
 
