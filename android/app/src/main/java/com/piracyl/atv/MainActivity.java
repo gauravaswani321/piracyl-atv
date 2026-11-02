@@ -28,6 +28,11 @@ public class MainActivity extends BridgeActivity {
             webView.addJavascriptInterface(new Object() {
                 @JavascriptInterface
                 public void launchExoPlayer(final String url, final String title, final String fileId, final long positionMs) {
+                    launchExoPlayer(url, title, fileId, positionMs, "");
+                }
+
+                @JavascriptInterface
+                public void launchExoPlayer(final String url, final String title, final String fileId, final long positionMs, final String subtitleUrl) {
                     MainActivity.this.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
@@ -37,6 +42,9 @@ public class MainActivity extends BridgeActivity {
                                 intent.putExtra("title", title);
                                 intent.putExtra("fileId", fileId);
                                 intent.putExtra("position", positionMs);
+                                if (subtitleUrl != null && !subtitleUrl.isEmpty()) {
+                                    intent.putExtra("subtitleUrl", subtitleUrl);
+                                }
                                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                                 startActivity(intent);
                             } catch (Exception e) {

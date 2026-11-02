@@ -14,6 +14,7 @@ import { VideoPlayerView } from '../components/VideoPlayerView';
 import { SettingsModal } from '../components/SettingsModal';
 import { PlayerChoiceModal } from '../components/PlayerChoiceModal';
 import { launchNativeExoPlayer, launchExternalTVPlayer } from '../services/nativePlayer';
+import { findSiblingSubtitles } from '../services/subtitleService';
 
 export const Home: React.FC = () => {
   const [config, setConfig] = useState<WorkerConfig>(getStoredConfig);
@@ -71,7 +72,12 @@ export const Home: React.FC = () => {
   const startPlayback = (file: DriveFile, engine: 'exo' | 'vlc' | 'web') => {
     const streamUrl = getStreamUrl(config, file);
     if (engine === 'exo') {
-      const launched = launchNativeExoPlayer(streamUrl, file.name, file.id);
+      const siblingSub = findSiblingSubtitles(file, files);
+      let subtitleUrl = '';
+      if (siblingSub.length > 0) {
+        subtitleUrl = getStreamUrl(config, siblingSub[0]);
+      }
+      const launched = launchNativeExoPlayer(streamUrl, file.name, file.id, 0, subtitleUrl);
       if (!launched) {
         // Fallback to web player if not running on native TV (e.g. testing in browser)
         setActiveVideo({ file, streamUrl });

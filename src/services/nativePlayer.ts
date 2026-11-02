@@ -14,13 +14,14 @@ export const launchNativeExoPlayer = (
   url: string,
   title: string = '',
   fileId: string = '',
-  positionSeconds: number = 0
+  positionSeconds: number = 0,
+  subtitleUrl: string = ''
 ): boolean => {
   const positionMs = Math.max(0, Math.round(positionSeconds * 1000));
 
   if (isNativeTVBridgeAvailable() && typeof (window as any).TVPlayerBridge?.launchExoPlayer === 'function') {
     try {
-      (window as any).TVPlayerBridge.launchExoPlayer(url, title || '', fileId || '', positionMs || 0);
+      (window as any).TVPlayerBridge.launchExoPlayer(url, title || '', fileId || '', positionMs || 0, subtitleUrl || '');
       return true;
     } catch (e) {
       console.error('TVPlayerBridge.launchExoPlayer error:', e);
