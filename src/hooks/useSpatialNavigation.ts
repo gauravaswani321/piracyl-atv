@@ -52,8 +52,18 @@ export const useSpatialNavigation = ({
       if (!isArrow) return;
 
       const current = document.activeElement as HTMLElement;
+
+      // Allow native text caret movement inside inputs when pressing Left or Right
+      if (current && current.tagName === 'INPUT' && (key === 'ArrowLeft' || key === 'ArrowRight')) {
+        return;
+      }
+
+      // Check if an active modal dialog is present, and scope navigation to it
+      const activeModal = document.querySelector<HTMLElement>('[data-nav-modal="true"], [role="dialog"]');
+      const root = activeModal || document;
+
       const navItems = Array.from(
-        document.querySelectorAll<HTMLElement>('[data-nav-item="true"]:not([disabled])')
+        root.querySelectorAll<HTMLElement>('[data-nav-item="true"]:not([disabled])')
       ).filter(el => {
         const style = window.getComputedStyle(el);
         return style.display !== 'none' && style.visibility !== 'hidden' && el.offsetParent !== null;
@@ -61,49 +71,63 @@ export const useSpatialNavigation = ({
 
       if (!navItems.length) return;
 
-      // If nothing relevant focused, focus first or default
+      // If nothing relevant focused, focus first or default inside active root
       if (!current || !navItems.includes(current)) {
         e.preventDefault();
-        focusDefault();
+        const defaultInside = root.querySelector<HTMLElement>(defaultFocusSelector);
+        if (defaultInside && navItems.includes(defaultInside)) {
+          defaultInside.focus();
+        } else if (navItems[0]) {
+          navItems[0].focus();
+        }
         return;
       }
 
       const curRect = current.getBoundingClientRect();
-      const curCenterX = curRect.left + curRect.width / 2;
-      const curCenterY = curRect.top + curRect.height / 2;
-
       let bestCandidate: HTMLElement | null = null;
       let minDistance = Infinity;
 
       for (const item of navItems) {
         if (item === current) continue;
         const rect = item.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
 
-        const dx = centerX - curCenterX;
-        const dy = centerY - curCenterY;
-
+        let primaryDist = 0;
+        let perpDist = 0;
         let isValid = false;
 
-        if (key === 'ArrowRight' && dx > 10) {
-          isValid = true;
-        } else if (key === 'ArrowLeft' && dx < -10) {
-          isValid = true;
-        } else if (key === 'ArrowDown' && dy > 10) {
-          isValid = true;
-        } else if (key === 'ArrowUp' && dy < -10) {
-          isValid = true;
+        if (key === 'ArrowDown') {
+          // Candidate must be below current (center or top is lower)
+          if (rect.top >= curRect.top + 4 || rect.bottom >= curRect.bottom + 4) {
+            isValid = true;
+            primaryDist = Math.max(0, rect.top - curRect.bottom);
+            perpDist = Math.max(0, curRect.left - rect.right, rect.left - curRect.right);
+          }
+        } else if (key === 'ArrowUp') {
+          // Candidate must be above current
+          if (rect.bottom <= curRect.bottom - 4 || rect.top <= curRect.top - 4) {
+            isValid = true;
+            primaryDist = Math.max(0, curRect.top - rect.bottom);
+            perpDist = Math.max(0, curRect.left - rect.right, rect.left - curRect.right);
+          }
+        } else if (key === 'ArrowRight') {
+          // Candidate must be to the right
+          if (rect.left >= curRect.left + 4 || rect.right >= curRect.right + 4) {
+            isValid = true;
+            primaryDist = Math.max(0, rect.left - curRect.right);
+            perpDist = Math.max(0, curRect.top - rect.bottom, rect.top - curRect.bottom);
+          }
+        } else if (key === 'ArrowLeft') {
+          // Candidate must be to the left
+          if (rect.right <= curRect.right - 4 || rect.left <= curRect.left - 4) {
+            isValid = true;
+            primaryDist = Math.max(0, curRect.left - rect.right);
+            perpDist = Math.max(0, curRect.top - rect.bottom, rect.top - curRect.bottom);
+          }
         }
 
         if (isValid) {
-          // Weight perpendicular distance more heavily to keep in same row/col
-          const isHorizontal = key === 'ArrowLeft' || key === 'ArrowRight';
-          const primaryDist = Math.abs(isHorizontal ? dx : dy);
-          const secondaryDist = Math.abs(isHorizontal ? dy : dx);
-          
-          // Cost function: penalize off-axis candidates
-          const distance = primaryDist + secondaryDist * 2.5;
+          // Total distance with perpendicular penalty
+          const distance = primaryDist + perpDist * 2.0;
 
           if (distance < minDistance) {
             minDistance = distance;

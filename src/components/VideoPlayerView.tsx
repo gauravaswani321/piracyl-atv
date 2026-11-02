@@ -22,7 +22,7 @@ import {
   loadSubtitleAsVttBlob
 } from '../services/subtitleService';
 import { TrackSettingsModal } from './TrackSettingsModal';
-import { launchExternalTVPlayer } from '../services/nativePlayer';
+import { launchExternalTVPlayer, isNativeTVBridgeAvailable } from '../services/nativePlayer';
 
 interface VideoPlayerViewProps {
   file: DriveFile;
@@ -62,6 +62,7 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
 
   // Subtitle & Audio Track States
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [toastNotice, setToastNotice] = useState<string | null>(null);
   const [isTrackModalOpen, setIsTrackModalOpen] = useState(false);
   const [subtitleTracks, setSubtitleTracks] = useState<SubtitleTrack[]>([]);
   const [selectedSubtitleId, setSelectedSubtitleId] = useState<string | null>(null);
@@ -131,9 +132,21 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
     }
   }, []);
 
+  const isMkvOrDolby = useMemo(() => {
+    return (
+      (file.name || '').toLowerCase().endsWith('.mkv') ||
+      /(ddp|ac3|dts|5\.1|7\.1|atmos|truehd|eac3)/i.test(file.name || '')
+    );
+  }, [file.name]);
+
   const handleSwitchToVLC = () => {
     const currentPos = videoRef.current ? videoRef.current.currentTime : 0;
     launchExternalTVPlayer(streamUrl, file.name, '', currentPos);
+    if (!isNativeTVBridgeAvailable()) {
+      setToastNotice('Stream URL copied to clipboard! In VLC: Media -> Open Network Stream -> Paste.');
+      setTimeout(() => setToastNotice(null), 6000);
+      return;
+    }
     onClose();
   };
 
@@ -150,7 +163,7 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
       if (saved && saved.currentTime > 5 && saved.currentTime < (video.duration - 15)) {
         video.currentTime = saved.currentTime;
       }
-      video.play().catch((err) => console.log('Autoplay policy caught:', err));
+      video.muted = false; video.volume = 1.0; setIsMuted(false); video.play().catch((err) => { console.log('Unmuted autoplay blocked:', err); video.muted = true; setIsMuted(true); video.play().catch((e) => console.error('Play failed:', e)); });
     };
 
     const handleTimeUpdate = () => {
@@ -666,6 +679,53 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Center Toast or Browser Dolby Audio Notice */}
+        {toastNotice && (
+          <div
+            style={{
+              alignSelf: 'center',
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              border: '1px solid #38bdf8',
+              borderRadius: '12px',
+              padding: '14px 28px',
+              color: '#38bdf8',
+              fontWeight: 600,
+              fontSize: '0.95rem',
+              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.7)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              zIndex: 90
+            }}
+          >
+            <span>{toastNotice}</span>
+          </div>
+        )}
+
+        {isMkvOrDolby && !isNativeTVBridgeAvailable() && !toastNotice && (
+          <div
+            style={{
+              alignSelf: 'center',
+              backgroundColor: 'rgba(30, 41, 59, 0.88)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(245, 158, 11, 0.6)',
+              borderRadius: '12px',
+              padding: '10px 22px',
+              color: '#fef08a',
+              fontSize: '0.88rem',
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              maxWidth: '680px',
+              textAlign: 'center',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
+            }}
+          >
+            <span>⚠️ <strong>MKV / Dolby Audio Notice:</strong> Web browsers do not support Dolby/DTS audio codecs. For sound, use the Android TV APK (ExoPlayer/VLC) or click &ldquo;Switch to VLC&rdquo; to play in VLC on PC.</span>
+          </div>
+        )}
 
         {/* Bottom Controls Bar */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

@@ -52,6 +52,16 @@ export const launchExternalTVPlayer = (
 
   // Fallback for Android browser or desktop
   try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(url).catch(() => {});
+    }
+
+    if (typeof window !== 'undefined' && !/Android/i.test(navigator.userAgent)) {
+      // Desktop browser: Try opening VLC protocol or network stream
+      window.location.href = `vlc://${url}`;
+      return true;
+    }
+
     const cleanUrl = url.replace(/^https?:\/\//, '');
     const intentUrl = `intent://${cleanUrl}#Intent;action=android.intent.action.VIEW;type=video/*;end;`;
     window.location.href = intentUrl;

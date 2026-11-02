@@ -53,6 +53,32 @@ body {
   z-index: 30 !important;
 }
 
+/* Text Inputs: Disable raw inner outline & button scale, outer container handles focus */
+input[data-nav-item]:focus,
+input[data-nav-item]:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+  border-color: transparent !important;
+}
+
+/* Unified Focus Container for Inputs & Search Bar */
+.input-focus-container {
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.input-focus-container:focus-within {
+  border-color: #38bdf8 !important;
+  background: #182234 !important;
+  box-shadow: 0 0 22px rgba(56, 189, 248, 0.4), 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+  transform: scale(1.02) translateZ(0) !important;
+}
+
+.input-focus-container:focus-within svg {
+  color: #38bdf8 !important;
+  transition: color 0.2s ease;
+}
+
 /* Custom Scrollbar for Leanback Experience */
 ::-webkit-scrollbar {
   width: 6px;

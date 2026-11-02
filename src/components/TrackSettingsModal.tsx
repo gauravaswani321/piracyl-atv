@@ -104,7 +104,9 @@ export const TrackSettingsModal: React.FC<TrackSettingsModalProps> = ({
       }}
     >
       <div
+        data-nav-modal="true"
         data-nav-container="true"
+        role="dialog"
         style={{
           background: '#151b28',
           border: '1px solid rgba(255, 255, 255, 0.12)',

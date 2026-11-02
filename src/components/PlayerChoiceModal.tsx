@@ -34,6 +34,9 @@ export const PlayerChoiceModal: React.FC<PlayerChoiceModalProps> = ({
       }}
     >
       <div
+        data-nav-modal="true"
+        data-nav-container="true"
+        role="dialog"
         style={{
           width: '100%',
           maxWidth: '580px',

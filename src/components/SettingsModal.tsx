@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Check, Globe, Folder, ShieldCheck, AlertCircle } from 'lucide-react';
 import { WorkerConfig } from '../types/drive';
 import { fetchFolderContents } from '../services/workerApi';
@@ -22,6 +22,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [playerEngine, setPlayerEngine] = useState<'exo' | 'vlc' | 'web' | 'ask'>(config.playerEngine || 'exo');
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const [focusedField, setFocusedField] = useState<'baseUrl' | 'rootPath' | null>(null);
+  const baseUrlInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Auto-focus first input when Settings opens
+  useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(() => {
+        baseUrlInputRef.current?.focus();
+        setFocusedField('baseUrl');
+      }, 50);
+      return () => clearTimeout(timer);
+    } else {
+      setFocusedField(null);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -73,7 +89,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       }}
     >
       <div
+        data-nav-modal="true"
         data-nav-container="true"
+        role="dialog"
         style={{
           background: '#151b28',
           border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -117,15 +135,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <label style={{ display: 'block', fontSize: '0.9rem', color: '#94a3b8', marginBottom: '8px', fontWeight: 500 }}>
               Cloudflare Worker URL
             </label>
-            <div style={{ display: 'flex', alignItems: 'center', background: '#0b0e14', border: '1px solid #2d3852', borderRadius: '10px', padding: '10px 14px' }}>
-              <Globe size={18} color="#64748b" style={{ marginRight: '10px' }} />
+            <div
+              className="input-focus-container"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                background: focusedField === 'baseUrl' ? '#182234' : '#0b0e14',
+                border: focusedField === 'baseUrl' ? '2px solid #38bdf8' : '1px solid #2d3852',
+                borderRadius: '12px',
+                padding: '10px 14px',
+                boxShadow: focusedField === 'baseUrl'
+                  ? '0 0 22px rgba(56, 189, 248, 0.4), 0 4px 16px rgba(0, 0, 0, 0.5)'
+                  : 'none',
+                transform: focusedField === 'baseUrl' ? 'scale(1.02)' : 'none',
+                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+              }}
+            >
+              <Globe
+                size={18}
+                color={focusedField === 'baseUrl' ? '#38bdf8' : '#64748b'}
+                style={{ marginRight: '10px', flexShrink: 0, transition: 'color 0.2s ease' }}
+              />
               <input
+                ref={baseUrlInputRef}
                 data-nav-item="true"
                 data-nav-default="true"
                 tabIndex={0}
                 type="text"
                 value={baseUrl}
                 placeholder="https://your-worker.workers.dev"
+                onFocus={() => setFocusedField('baseUrl')}
+                onBlur={() => setFocusedField((cur) => cur === 'baseUrl' ? null : cur)}
                 onChange={(e) => setBaseUrl(e.target.value)}
                 style={{
                   background: 'transparent',
@@ -133,7 +173,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   outline: 'none',
                   color: '#f8fafc',
                   fontSize: '0.95rem',
-                  width: '100%'
+                  width: '100%',
+                  padding: '2px 0'
                 }}
               />
             </div>
@@ -146,14 +187,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <label style={{ display: 'block', fontSize: '0.9rem', color: '#94a3b8', marginBottom: '8px', fontWeight: 500 }}>
               Default Root Path
             </label>
-            <div style={{ display: 'flex', alignItems: 'center', background: '#0b0e14', border: '1px solid #2d3852', borderRadius: '10px', padding: '10px 14px' }}>
-              <Folder size={18} color="#64748b" style={{ marginRight: '10px' }} />
+            <div
+              className="input-focus-container"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                background: focusedField === 'rootPath' ? '#182234' : '#0b0e14',
+                border: focusedField === 'rootPath' ? '2px solid #38bdf8' : '1px solid #2d3852',
+                borderRadius: '12px',
+                padding: '10px 14px',
+                boxShadow: focusedField === 'rootPath'
+                  ? '0 0 22px rgba(56, 189, 248, 0.4), 0 4px 16px rgba(0, 0, 0, 0.5)'
+                  : 'none',
+                transform: focusedField === 'rootPath' ? 'scale(1.02)' : 'none',
+                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+              }}
+            >
+              <Folder
+                size={18}
+                color={focusedField === 'rootPath' ? '#38bdf8' : '#64748b'}
+                style={{ marginRight: '10px', flexShrink: 0, transition: 'color 0.2s ease' }}
+              />
               <input
                 data-nav-item="true"
                 tabIndex={0}
                 type="text"
                 value={rootPath}
                 placeholder="0:/"
+                onFocus={() => setFocusedField('rootPath')}
+                onBlur={() => setFocusedField((cur) => cur === 'rootPath' ? null : cur)}
                 onChange={(e) => setRootPath(e.target.value)}
                 style={{
                   background: 'transparent',
@@ -161,7 +223,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   outline: 'none',
                   color: '#f8fafc',
                   fontSize: '0.95rem',
-                  width: '100%'
+                  width: '100%',
+                  padding: '2px 0'
                 }}
               />
             </div>

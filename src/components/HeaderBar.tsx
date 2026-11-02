@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   FolderUp,
   RefreshCw,
   Search,
   Settings,
   HardDrive,
-  Film
+  Film,
+  X
 } from 'lucide-react';
 import { DriveFolder } from '../types/drive';
 
@@ -31,6 +32,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   loading
 }) => {
   const canGoUp = folderHistory.length > 0;
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   return (
     <header
@@ -113,36 +115,74 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
 
       {/* Right: Controls & Search */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-        {/* Search Input */}
+        {/* Search Input Container */}
         <div
+          className="input-focus-container"
           style={{
             display: 'flex',
             alignItems: 'center',
-            background: '#151b28',
-            border: '1px solid #2d3852',
-            borderRadius: '10px',
-            padding: '4px 12px',
-            width: '260px'
+            background: isSearchFocused ? '#182234' : '#151b28',
+            border: isSearchFocused ? '1.5px solid #38bdf8' : '1px solid #2d3852',
+            borderRadius: '12px',
+            padding: '4px 14px',
+            width: '280px',
+            boxShadow: isSearchFocused
+              ? '0 0 20px rgba(56, 189, 248, 0.35), 0 4px 16px rgba(0, 0, 0, 0.5)'
+              : 'none',
+            transform: isSearchFocused ? 'scale(1.02)' : 'none',
+            transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
           }}
         >
-          <Search size={18} color="#64748b" style={{ marginRight: '8px' }} />
+          <Search
+            size={18}
+            color={isSearchFocused ? '#38bdf8' : '#64748b'}
+            style={{
+              marginRight: '10px',
+              flexShrink: 0,
+              transition: 'color 0.2s ease, transform 0.2s ease',
+              transform: isSearchFocused ? 'scale(1.1)' : 'scale(1)'
+            }}
+          />
           <input
             data-nav-item="true"
             tabIndex={0}
             type="text"
             placeholder="Search videos..."
             value={searchQuery}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setIsSearchFocused(false)}
             onChange={(e) => onSearchChange(e.target.value)}
             style={{
               background: 'transparent',
               border: 'none',
               outline: 'none',
               color: '#f8fafc',
-              fontSize: '0.9rem',
+              fontSize: '0.92rem',
+              fontWeight: 500,
               width: '100%',
-              padding: '6px 0'
+              padding: '8px 0'
             }}
           />
+          {searchQuery && (
+            <button
+              onClick={() => onSearchChange('')}
+              tabIndex={-1}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#94a3b8',
+                padding: '4px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '50%'
+              }}
+              title="Clear search"
+            >
+              <X size={16} />
+            </button>
+          )}
         </div>
 
         {/* Refresh Button */}
