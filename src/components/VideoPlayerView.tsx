@@ -59,6 +59,7 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Subtitle & Audio Track States
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isTrackModalOpen, setIsTrackModalOpen] = useState(false);
   const [subtitleTracks, setSubtitleTracks] = useState<SubtitleTrack[]>([]);
   const [selectedSubtitleId, setSelectedSubtitleId] = useState<string | null>(null);
@@ -164,7 +165,25 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
     };
 
     const handleWaiting = () => setBuffering(true);
-    const handlePlaying = () => setBuffering(false);
+    const handlePlaying = () => {
+      setBuffering(false);
+      setErrorMessage(null);
+    };
+
+    const handleError = () => {
+      const err = video.error;
+      console.error('HTML5 Video Error:', err);
+      setBuffering(false);
+      if (err) {
+        if (err.code === 4) {
+          setErrorMessage(
+            'The browser cannot decode this MKV video format or audio codec (e.g. AC3/DTS/DDP). Use the "Open in VLC" button below or test on Android TV where ExoPlayer plays all MKV formats natively.'
+          );
+        } else {
+          setErrorMessage(`Playback error (code ${err.code}): ${err.message || 'Media stream failed'}`);
+        }
+      }
+    };
 
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('timeupdate', handleTimeUpdate);
@@ -172,6 +191,7 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
     video.addEventListener('pause', handlePause);
     video.addEventListener('waiting', handleWaiting);
     video.addEventListener('playing', handlePlaying);
+    video.addEventListener('error', handleError);
 
     return () => {
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
@@ -180,6 +200,7 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('waiting', handleWaiting);
       video.removeEventListener('playing', handlePlaying);
+      video.removeEventListener('error', handleError);
       if (video.duration > 0) {
         savePlaybackProgress(file.id, video.currentTime, video.duration);
       }
@@ -354,8 +375,13 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
   const togglePlay = () => {
     const video = videoRef.current;
     if (!video) return;
-    if (video.paused) video.play();
-    else video.pause();
+    if (video.paused) {
+      video.play().catch((err) => {
+        console.warn('Playback play() failed:', err);
+      });
+    } else {
+      video.pause();
+    }
   };
 
   const seekRelative = (seconds: number) => {
@@ -414,13 +440,77 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
         ref={videoRef}
         src={streamUrl}
         playsInline
-        crossOrigin="anonymous"
         style={{
           width: '100%',
           height: '100%',
           objectFit: 'contain'
         }}
       />
+
+      {/* Playback Error Overlay */}
+      {errorMessage && (
+        <div
+          style={{
+            position: 'absolute',
+            zIndex: 95,
+            maxWidth: '560px',
+            background: 'rgba(21, 27, 40, 0.95)',
+            border: '1px solid rgba(239, 68, 68, 0.4)',
+            borderRadius: '16px',
+            padding: '28px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+            textAlign: 'center',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.8)'
+          }}
+        >
+          <div style={{ color: '#f87171', fontWeight: 700, fontSize: '1.2rem' }}>
+            Playback Issue
+          </div>
+          <div style={{ color: '#cbd5e1', fontSize: '0.95rem', lineHeight: '1.5' }}>
+            {errorMessage}
+          </div>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '8px' }}>
+            <button
+              data-nav-item="true"
+              tabIndex={0}
+              onClick={() => window.open(streamUrl, '_blank')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 20px',
+                background: '#38bdf8',
+                color: '#0f172a',
+                border: 'none',
+                borderRadius: '10px',
+                fontWeight: 700,
+                fontSize: '0.95rem'
+              }}
+            >
+              <Tv size={18} />
+              <span>Open in VLC / External Player</span>
+            </button>
+            <button
+              data-nav-item="true"
+              tabIndex={0}
+              onClick={onClose}
+              style={{
+                padding: '12px 20px',
+                background: '#1e293b',
+                color: '#f8fafc',
+                border: '1px solid #334155',
+                borderRadius: '10px',
+                fontWeight: 600,
+                fontSize: '0.95rem'
+              }}
+            >
+              Back
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Buffering Spinner */}
       {buffering && (
