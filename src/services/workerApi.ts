@@ -13,7 +13,7 @@ export const getStoredConfig = (): WorkerConfig => {
     }
   }
   return {
-    baseUrl: 'https://YOUR_WORKER_DOMAIN.workers.dev',
+    baseUrl: 'https://gdrive.gauravaswani.workers.dev',
     rootPath: '0:/',
     siteName: 'PiracyL ATV'
   };
@@ -102,12 +102,12 @@ export const fetchFolderContents = async (
       };
     }
 
-    // In web browser (localhost:3000), use standard fetch
+    // In web browser (localhost:3000), use 'text/plain' to avoid triggering an OPTIONS preflight request.
+    // The GDI-JS Cloudflare Worker parses JSON body and responds with 'Access-Control-Allow-Origin: *'.
     const res = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json'
+        'Content-Type': 'text/plain'
       },
       body: JSON.stringify({
         page_index: pageIndex,
@@ -140,9 +140,9 @@ export const getStreamUrl = (config: WorkerConfig, file: DriveFile): string => {
     link = `${config.baseUrl}${link}`;
   }
 
-  // Append inline=true for direct media streaming headers if not present
-  const separator = link.includes('?') ? '&' : '?';
-  if (!link.includes('inline=')) {
+  // Do not modify query parameters if the URL is HMAC-signed with mac= (GDI-JS signature)
+  if (!link.includes('mac=') && !link.includes('inline=')) {
+    const separator = link.includes('?') ? '&' : '?';
     link = `${link}${separator}inline=true`;
   }
   return link;

@@ -48,10 +48,12 @@ export const Home: React.FC = () => {
   // Handle folder navigation
   const handleFolderSelect = (folderFile: DriveFile) => {
     setFolderHistory((prev) => [...prev, currentFolder]);
+    const base = currentFolder.path.endsWith('/') ? currentFolder.path : `${currentFolder.path}/`;
+    const folderName = folderFile.name.endsWith('/') ? folderFile.name : `${folderFile.name}/`;
     setCurrentFolder({
       id: folderFile.id,
       name: folderFile.name,
-      path: folderFile.link || `${currentFolder.path}${folderFile.name}/`
+      path: folderFile.link || `${base}${folderName}`
     });
     setSearchQuery('');
   };
