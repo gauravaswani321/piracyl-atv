@@ -19,6 +19,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [baseUrl, setBaseUrl] = useState(config.baseUrl);
   const [rootPath, setRootPath] = useState(config.rootPath || '0:/');
   const [siteName, setSiteName] = useState(config.siteName || 'PiracyL ATV');
+  const [playerEngine, setPlayerEngine] = useState<'vlc' | 'web' | 'ask'>(config.playerEngine || 'ask');
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
@@ -51,7 +52,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     onSave({
       baseUrl: baseUrl.trim().replace(/\/+$/, ''),
       rootPath: rootPath.trim() || '0:/',
-      siteName: siteName.trim() || 'PiracyL ATV'
+      siteName: siteName.trim() || 'PiracyL ATV',
+      playerEngine
     });
     onClose();
   };
@@ -162,6 +164,44 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   width: '100%'
                 }}
               />
+            </div>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.9rem', color: '#94a3b8', marginBottom: '8px', fontWeight: 500 }}>
+              Default Video Player Engine
+            </label>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {[
+                { id: 'vlc' as const, label: 'VLC / External (Recommended)', desc: 'Full Dolby Audio & 4K Smooth' },
+                { id: 'web' as const, label: 'Built-in Web Player', desc: 'In-app player with subtitle controls' },
+                { id: 'ask' as const, label: 'Always Ask', desc: 'Prompt when selecting video' }
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  data-nav-item="true"
+                  tabIndex={0}
+                  onClick={() => setPlayerEngine(opt.id)}
+                  style={{
+                    flex: '1 1 calc(33.333% - 8px)',
+                    minWidth: '140px',
+                    padding: '12px 14px',
+                    borderRadius: '10px',
+                    border: playerEngine === opt.id ? '2px solid #38bdf8' : '1px solid #2d3852',
+                    backgroundColor: playerEngine === opt.id ? 'rgba(56, 189, 248, 0.15)' : '#0b0e14',
+                    color: playerEngine === opt.id ? '#38bdf8' : '#cbd5e1',
+                    fontWeight: playerEngine === opt.id ? 700 : 500,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div>{opt.label}</div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>{opt.desc}</div>
+                </button>
+              ))}
             </div>
           </div>
 

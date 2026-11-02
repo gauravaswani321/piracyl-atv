@@ -15,7 +15,8 @@ export const getStoredConfig = (): WorkerConfig => {
   return {
     baseUrl: 'https://gdrive.gauravaswani.workers.dev',
     rootPath: '0:/',
-    siteName: 'PiracyL ATV'
+    siteName: 'PiracyL ATV',
+    playerEngine: 'ask'
   };
 };
 

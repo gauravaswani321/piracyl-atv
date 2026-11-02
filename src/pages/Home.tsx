@@ -12,6 +12,8 @@ import { HeaderBar } from '../components/HeaderBar';
 import { VideoGrid } from '../components/VideoGrid';
 import { VideoPlayerView } from '../components/VideoPlayerView';
 import { SettingsModal } from '../components/SettingsModal';
+import { PlayerChoiceModal } from '../components/PlayerChoiceModal';
+import { launchExternalTVPlayer } from '../services/nativePlayer';
 
 export const Home: React.FC = () => {
   const [config, setConfig] = useState<WorkerConfig>(getStoredConfig);
@@ -25,6 +27,7 @@ export const Home: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeVideo, setActiveVideo] = useState<{ file: DriveFile; streamUrl: string } | null>(null);
+  const [selectedFileForChoice, setSelectedFileForChoice] = useState<DriveFile | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Load contents of current folder
@@ -65,16 +68,49 @@ export const Home: React.FC = () => {
     setSearchQuery('');
   }, [folderHistory]);
 
-  // Handle Video Selection - launches the full-featured TV player
-  const handleFileSelect = (file: DriveFile) => {
+  const startPlayback = (file: DriveFile, engine: 'vlc' | 'web') => {
     const streamUrl = getStreamUrl(config, file);
-    setActiveVideo({ file, streamUrl });
+    if (engine === 'vlc') {
+      launchExternalTVPlayer(streamUrl, file.name);
+    } else {
+      setActiveVideo({ file, streamUrl });
+    }
+  };
+
+  // Handle Video Selection - prompts or launches according to preference
+  const handleFileSelect = (file: DriveFile) => {
+    const engine = config.playerEngine || 'ask';
+    if (engine === 'vlc') {
+      startPlayback(file, 'vlc');
+    } else if (engine === 'web') {
+      startPlayback(file, 'web');
+    } else {
+      setSelectedFileForChoice(file);
+    }
+  };
+
+  const handleChoice = (engine: 'vlc' | 'web', remember: boolean) => {
+    if (!selectedFileForChoice) return;
+    const file = selectedFileForChoice;
+    setSelectedFileForChoice(null);
+
+    if (remember) {
+      const updated = { ...config, playerEngine: engine };
+      setConfig(updated);
+      saveStoredConfig(updated);
+    }
+
+    startPlayback(file, engine);
   };
 
   // Back button handling
   const handleBack = useCallback(() => {
     if (activeVideo) {
       setActiveVideo(null);
+      return;
+    }
+    if (selectedFileForChoice) {
+      setSelectedFileForChoice(null);
       return;
     }
     if (isSettingsOpen) {
@@ -85,7 +121,7 @@ export const Home: React.FC = () => {
       handleNavigateUp();
       return;
     }
-  }, [activeVideo, isSettingsOpen, folderHistory.length, handleNavigateUp]);
+  }, [activeVideo, selectedFileForChoice, isSettingsOpen, folderHistory.length, handleNavigateUp]);
 
   // Spatial Navigation for TV Remote
   useSpatialNavigation({
@@ -131,6 +167,14 @@ export const Home: React.FC = () => {
             onClose={() => setActiveVideo(null)}
           />
         )}
+
+        {/* Player Selection Choice Modal */}
+        <PlayerChoiceModal
+          isOpen={!!selectedFileForChoice}
+          file={selectedFileForChoice}
+          onSelectPlayer={handleChoice}
+          onClose={() => setSelectedFileForChoice(null)}
+        />
 
         {/* Settings Modal */}
         <SettingsModal

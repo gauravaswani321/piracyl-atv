@@ -22,6 +22,7 @@ import {
   loadSubtitleAsVttBlob
 } from '../services/subtitleService';
 import { TrackSettingsModal } from './TrackSettingsModal';
+import { launchExternalTVPlayer } from '../services/nativePlayer';
 
 interface VideoPlayerViewProps {
   file: DriveFile;
@@ -129,6 +130,12 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
       if (activeId) setSelectedAudioTrackId(activeId);
     }
   }, []);
+
+  const handleSwitchToVLC = () => {
+    const currentPos = videoRef.current ? videoRef.current.currentTime : 0;
+    launchExternalTVPlayer(streamUrl, file.name, '', currentPos);
+    onClose();
+  };
 
   // Initial resume seek and track detection
   useEffect(() => {
@@ -488,7 +495,7 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
             <button
               data-nav-item="true"
               tabIndex={0}
-              onClick={() => window.open(streamUrl, '_blank')}
+              onClick={handleSwitchToVLC}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -611,27 +618,53 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
             </div>
           </div>
 
-          <button
-            data-nav-item="true"
-            tabIndex={0}
-            onClick={() => setIsTrackModalOpen(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 18px',
-              borderRadius: '12px',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              background: 'rgba(0, 0, 0, 0.5)',
-              backdropFilter: 'blur(8px)',
-              color: '#38bdf8',
-              fontWeight: 600,
-              fontSize: '0.9rem'
-            }}
-          >
-            <Tv size={18} />
-            <span>Player Settings / VLC</span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button
+              data-nav-item="true"
+              tabIndex={0}
+              onClick={handleSwitchToVLC}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 18px',
+                borderRadius: '12px',
+                border: '1px solid #38bdf8',
+                background: 'rgba(56, 189, 248, 0.2)',
+                backdropFilter: 'blur(8px)',
+                color: '#38bdf8',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                cursor: 'pointer'
+              }}
+            >
+              <Tv size={18} />
+              <span>Switch to VLC (Dolby Audio & 4K)</span>
+            </button>
+
+            <button
+              data-nav-item="true"
+              tabIndex={0}
+              onClick={() => setIsTrackModalOpen(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 18px',
+                borderRadius: '12px',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                background: 'rgba(0, 0, 0, 0.5)',
+                backdropFilter: 'blur(8px)',
+                color: '#f8fafc',
+                fontWeight: 600,
+                fontSize: '0.9rem',
+                cursor: 'pointer'
+              }}
+            >
+              <Subtitles size={18} />
+              <span>Audio & Subtitle Settings</span>
+            </button>
+          </div>
         </div>
 
         {/* Bottom Controls Bar */}

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { SubtitleTrack, SubtitleSettings } from '../services/subtitleService';
 import { DriveFile } from '../types/drive';
+import { launchExternalTVPlayer } from '../services/nativePlayer';
 
 interface AudioTrackInfo {
   id: string;
@@ -61,14 +62,8 @@ export const TrackSettingsModal: React.FC<TrackSettingsModalProps> = ({
   if (!isOpen) return null;
 
   const handleLaunchExternal = () => {
-    try {
-      // Direct intent for Android TV video players (VLC, Just Player, Nova, MX Player)
-      const cleanUrl = streamUrl.replace(/^https?:\/\//, '');
-      const intentUrl = `intent://${cleanUrl}#Intent;action=android.intent.action.VIEW;type=video/*;end;`;
-      window.location.href = intentUrl;
-    } catch {
-      window.open(streamUrl, '_blank');
-    }
+    launchExternalTVPlayer(streamUrl, fileName);
+    onClose();
   };
 
   const fontSizes = [
