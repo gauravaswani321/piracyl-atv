@@ -186,3 +186,4 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
     </header>
   );
 };
+

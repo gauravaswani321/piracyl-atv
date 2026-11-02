@@ -1,3 +1,4 @@
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { DriveFile, WorkerConfig } from '../types/drive';
 
 const DEFAULT_CONFIG_KEY = 'piracyl_worker_config';
@@ -80,6 +81,28 @@ export const fetchFolderContents = async (
   const url = `${config.baseUrl}${relPath}`;
 
   try {
+    // On Native Android TV (Capacitor), route through native HTTP engine to bypass CORS
+    if (Capacitor.isNativePlatform()) {
+      const nativeRes = await CapacitorHttp.post({
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json'
+        },
+        data: {
+          page_index: pageIndex,
+          password: password
+        }
+      });
+      const json = typeof nativeRes.data === 'string' ? JSON.parse(nativeRes.data) : nativeRes.data;
+      const files: DriveFile[] = json?.data?.files || [];
+      return {
+        files,
+        nextPageToken: json?.data?.nextPageToken
+      };
+    }
+
+    // In web browser (localhost:3000), use standard fetch
     const res = await fetch(url, {
       method: 'POST',
       headers: {
@@ -124,3 +147,4 @@ export const getStreamUrl = (config: WorkerConfig, file: DriveFile): string => {
   }
   return link;
 };
+

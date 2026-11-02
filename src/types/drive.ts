@@ -29,3 +29,4 @@ export interface PlaybackProgress {
   duration: number;
   lastPlayed: number;
 }
+

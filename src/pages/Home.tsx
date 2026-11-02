@@ -154,3 +154,4 @@ export const Home: React.FC = () => {
     </IonPage>
   );
 };
+

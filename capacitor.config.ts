@@ -9,6 +9,9 @@ const config: CapacitorConfig = {
     cleartext: true
   },
   plugins: {
+    CapacitorHttp: {
+      enabled: true
+    },
     CapacitorVideoPlayer: {
       // Configuration for video player
     }
@@ -16,3 +19,4 @@ const config: CapacitorConfig = {
 };
 
 export default config;
+
