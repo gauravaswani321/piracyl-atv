@@ -9,7 +9,8 @@ import {
   VolumeX,
   Subtitles,
   Languages,
-  Tv
+  Tv,
+  Loader2
 } from 'lucide-react';
 import { DriveFile, WorkerConfig } from '../types/drive';
 import { savePlaybackProgress, getPlaybackProgress } from '../services/videoPlayerService';
@@ -164,7 +165,11 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
       savePlaybackProgress(file.id, video.currentTime, video.duration);
     };
 
+    const handleLoadStart = () => setBuffering(true);
     const handleWaiting = () => setBuffering(true);
+    const handleSeeking = () => setBuffering(true);
+    const handleSeeked = () => setBuffering(false);
+    const handleCanPlay = () => setBuffering(false);
     const handlePlaying = () => {
       setBuffering(false);
       setErrorMessage(null);
@@ -185,20 +190,28 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
       }
     };
 
+    video.addEventListener('loadstart', handleLoadStart);
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('play', handlePlay);
     video.addEventListener('pause', handlePause);
     video.addEventListener('waiting', handleWaiting);
+    video.addEventListener('seeking', handleSeeking);
+    video.addEventListener('seeked', handleSeeked);
+    video.addEventListener('canplay', handleCanPlay);
     video.addEventListener('playing', handlePlaying);
     video.addEventListener('error', handleError);
 
     return () => {
+      video.removeEventListener('loadstart', handleLoadStart);
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('play', handlePlay);
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('waiting', handleWaiting);
+      video.removeEventListener('seeking', handleSeeking);
+      video.removeEventListener('seeked', handleSeeked);
+      video.removeEventListener('canplay', handleCanPlay);
       video.removeEventListener('playing', handlePlaying);
       video.removeEventListener('error', handleError);
       if (video.duration > 0) {
@@ -513,18 +526,44 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
       )}
 
       {/* Buffering Spinner */}
-      {buffering && (
+      {buffering && !errorMessage && (
         <div
           style={{
             position: 'absolute',
-            width: '64px',
-            height: '64px',
-            border: '5px solid rgba(255, 255, 255, 0.2)',
-            borderTopColor: '#38bdf8',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite'
+            zIndex: 60,
+            pointerEvents: 'none',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '14px',
+            background: 'rgba(0, 0, 0, 0.5)',
+            backdropFilter: 'blur(8px)',
+            padding: '24px 32px',
+            borderRadius: '20px',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)'
           }}
-        />
+        >
+          <Loader2
+            size={48}
+            color="#38bdf8"
+            className="spin-loader"
+            style={{
+              filter: 'drop-shadow(0 0 12px rgba(56, 189, 248, 0.7))'
+            }}
+          />
+          <span
+            style={{
+              color: '#f8fafc',
+              fontSize: '0.95rem',
+              fontWeight: 600,
+              letterSpacing: '0.04em'
+            }}
+          >
+            Buffering...
+          </span>
+        </div>
       )}
 
       {/* Overlay UI (Top and Bottom Controls) */}
