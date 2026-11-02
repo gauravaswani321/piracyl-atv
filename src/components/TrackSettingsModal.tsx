@@ -61,8 +61,14 @@ export const TrackSettingsModal: React.FC<TrackSettingsModalProps> = ({
   if (!isOpen) return null;
 
   const handleLaunchExternal = () => {
-    // Open in intent or new window (VLC handles raw stream URLs via protocol or download intent)
-    window.open(streamUrl, '_blank');
+    try {
+      // Direct intent for Android TV video players (VLC, Just Player, Nova, MX Player)
+      const cleanUrl = streamUrl.replace(/^https?:\/\//, '');
+      const intentUrl = `intent://${cleanUrl}#Intent;action=android.intent.action.VIEW;type=video/*;end;`;
+      window.location.href = intentUrl;
+    } catch {
+      window.open(streamUrl, '_blank');
+    }
   };
 
   const fontSizes = [

@@ -7,7 +7,6 @@ import {
   fetchFolderContents,
   getStreamUrl
 } from '../services/workerApi';
-import { launchNativePlayer } from '../services/videoPlayerService';
 import { useSpatialNavigation } from '../hooks/useSpatialNavigation';
 import { HeaderBar } from '../components/HeaderBar';
 import { VideoGrid } from '../components/VideoGrid';
@@ -66,21 +65,10 @@ export const Home: React.FC = () => {
     setSearchQuery('');
   }, [folderHistory]);
 
-  // Handle Video Selection
-  const handleFileSelect = async (file: DriveFile) => {
+  // Handle Video Selection - launches the full-featured TV player
+  const handleFileSelect = (file: DriveFile) => {
     const streamUrl = getStreamUrl(config, file);
-
-    // Try native ExoPlayer on Android TV first
-    const launchedNative = await launchNativePlayer({
-      url: streamUrl,
-      title: file.name,
-      file
-    });
-
-    // If on web or native failed, open full-screen fallback player
-    if (!launchedNative) {
-      setActiveVideo({ file, streamUrl });
-    }
+    setActiveVideo({ file, streamUrl });
   };
 
   // Back button handling

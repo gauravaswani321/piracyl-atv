@@ -58,7 +58,8 @@ export const launchNativePlayer = async (options: LaunchPlayerOptions): Promise<
       title: options.title,
       pipEnabled: false,
       bkmodeEnabled: false,
-      showControls: true
+      showControls: true,
+      chromecast: false
     });
 
     console.log('Native ExoPlayer launched:', res);
