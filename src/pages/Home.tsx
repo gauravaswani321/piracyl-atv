@@ -138,6 +138,8 @@ export const Home: React.FC = () => {
           <VideoPlayerView
             file={activeVideo.file}
             streamUrl={activeVideo.streamUrl}
+            config={config}
+            allFolderFiles={files}
             onClose={() => setActiveVideo(null)}
           />
         )}

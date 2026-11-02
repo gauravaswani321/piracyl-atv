@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import {
   ArrowLeft,
   Play,
@@ -7,14 +7,26 @@ import {
   RotateCw,
   Volume2,
   VolumeX,
-  Maximize2
+  Subtitles,
+  Languages,
+  Tv
 } from 'lucide-react';
-import { DriveFile } from '../types/drive';
+import { DriveFile, WorkerConfig } from '../types/drive';
 import { savePlaybackProgress, getPlaybackProgress } from '../services/videoPlayerService';
+import {
+  SubtitleTrack,
+  SubtitleSettings,
+  DEFAULT_SUBTITLE_SETTINGS,
+  findSiblingSubtitles,
+  loadSubtitleAsVttBlob
+} from '../services/subtitleService';
+import { TrackSettingsModal } from './TrackSettingsModal';
 
 interface VideoPlayerViewProps {
   file: DriveFile;
   streamUrl: string;
+  config: WorkerConfig;
+  allFolderFiles?: DriveFile[];
   onClose: () => void;
 }
 
@@ -33,6 +45,8 @@ const formatTime = (seconds: number): string => {
 export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
   file,
   streamUrl,
+  config,
+  allFolderFiles = [],
   onClose
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -44,25 +58,85 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
   const [buffering, setBuffering] = useState(true);
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Subtitle & Audio Track States
+  const [isTrackModalOpen, setIsTrackModalOpen] = useState(false);
+  const [subtitleTracks, setSubtitleTracks] = useState<SubtitleTrack[]>([]);
+  const [selectedSubtitleId, setSelectedSubtitleId] = useState<string | null>(null);
+  const [subtitleSettings, setSubtitleSettings] = useState<SubtitleSettings>(DEFAULT_SUBTITLE_SETTINGS);
+  const [audioTracks, setAudioTracks] = useState<Array<{ id: string; label: string; language: string; enabled: boolean }>>([]);
+  const [selectedAudioTrackId, setSelectedAudioTrackId] = useState<string | null>(null);
+
+  // Find any subtitle files in the same folder (.srt, .vtt)
+  const siblingSubFiles = useMemo(() => {
+    return findSiblingSubtitles(file, allFolderFiles);
+  }, [file, allFolderFiles]);
+
   const resetHideTimer = useCallback(() => {
     setShowControls(true);
     if (hideTimeoutRef.current) {
       clearTimeout(hideTimeoutRef.current);
     }
     hideTimeoutRef.current = setTimeout(() => {
-      if (isPlaying) {
+      if (isPlaying && !isTrackModalOpen) {
         setShowControls(false);
       }
-    }, 4000);
-  }, [isPlaying]);
+    }, 4500);
+  }, [isPlaying, isTrackModalOpen]);
 
-  // Initial resume seek
+  // Initial scan for embedded textTracks and audioTracks
+  const scanMediaTracks = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Scan TextTracks (Subtitles)
+    const subList: SubtitleTrack[] = [];
+    if (video.textTracks && video.textTracks.length > 0) {
+      for (let i = 0; i < video.textTracks.length; i++) {
+        const t = video.textTracks[i];
+        subList.push({
+          id: `embedded-${i}`,
+          label: t.label || `Subtitle Track ${i + 1} (${t.language || 'und'})`,
+          language: t.language || 'und',
+          src: ''
+        });
+      }
+    }
+    setSubtitleTracks((prev) => {
+      // keep dynamically added ones
+      const externalOnly = prev.filter((p) => p.isExternal);
+      return [...subList, ...externalOnly];
+    });
+
+    // Scan AudioTracks
+    const mediaAudioTracks = (video as any).audioTracks;
+    if (mediaAudioTracks && mediaAudioTracks.length > 0) {
+      const aList = [];
+      let activeId = null;
+      for (let i = 0; i < mediaAudioTracks.length; i++) {
+        const at = mediaAudioTracks[i];
+        const atId = at.id || String(i);
+        if (at.enabled) activeId = atId;
+        aList.push({
+          id: atId,
+          label: at.label || `Audio Track ${i + 1} (${at.language || 'Default'})`,
+          language: at.language || 'und',
+          enabled: at.enabled
+        });
+      }
+      setAudioTracks(aList);
+      if (activeId) setSelectedAudioTrackId(activeId);
+    }
+  }, []);
+
+  // Initial resume seek and track detection
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     const handleLoadedMetadata = () => {
       setDuration(video.duration);
+      scanMediaTracks();
+
       const saved = getPlaybackProgress(file.id);
       if (saved && saved.currentTime > 5 && saved.currentTime < (video.duration - 15)) {
         video.currentTime = saved.currentTime;
@@ -72,7 +146,6 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
 
     const handleTimeUpdate = () => {
       setCurrentTime(video.currentTime);
-      // save progress every 5 seconds
       if (video.currentTime > 0 && Math.floor(video.currentTime) % 5 === 0) {
         savePlaybackProgress(file.id, video.currentTime, video.duration);
       }
@@ -111,7 +184,96 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
         savePlaybackProgress(file.id, video.currentTime, video.duration);
       }
     };
-  }, [file.id, resetHideTimer]);
+  }, [file.id, resetHideTimer, scanMediaTracks]);
+
+  // Handle switching Subtitles
+  const handleSelectSubtitle = useCallback((trackId: string | null) => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    setSelectedSubtitleId(trackId);
+
+    // Disable all text tracks first
+    for (let i = 0; i < video.textTracks.length; i++) {
+      video.textTracks[i].mode = 'disabled';
+    }
+
+    if (trackId === null) return;
+
+    // Enable selected track
+    if (trackId.startsWith('embedded-')) {
+      const idx = parseInt(trackId.replace('embedded-', ''), 10);
+      if (video.textTracks[idx]) {
+        video.textTracks[idx].mode = 'showing';
+      }
+    } else {
+      // Find track element by id
+      const trackElem = video.querySelector<HTMLTrackElement>(`track[data-track-id="${trackId}"]`);
+      if (trackElem && trackElem.track) {
+        trackElem.track.mode = 'showing';
+      }
+    }
+  }, []);
+
+  // Handle loading sibling subtitle from folder (.srt / .vtt)
+  const handleLoadSiblingSubtitle = async (subFile: DriveFile) => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    try {
+      setBuffering(true);
+      const vttUrl = await loadSubtitleAsVttBlob(config, subFile);
+      const trackId = `sibling-${subFile.id || Date.now()}`;
+
+      // Check if already in track elements
+      let trackEl = video.querySelector<HTMLTrackElement>(`track[data-track-id="${trackId}"]`);
+      if (!trackEl) {
+        trackEl = document.createElement('track');
+        trackEl.kind = 'subtitles';
+        trackEl.label = subFile.name;
+        trackEl.srclang = 'en';
+        trackEl.src = vttUrl;
+        trackEl.setAttribute('data-track-id', trackId);
+        video.appendChild(trackEl);
+      }
+
+      setSubtitleTracks((prev) => {
+        if (prev.some((t) => t.id === trackId)) return prev;
+        return [
+          ...prev,
+          {
+            id: trackId,
+            label: subFile.name,
+            src: vttUrl,
+            language: 'en',
+            isExternal: true
+          }
+        ];
+      });
+
+      handleSelectSubtitle(trackId);
+    } catch (err) {
+      console.error('Failed to load sibling subtitle', err);
+    } finally {
+      setBuffering(false);
+    }
+  };
+
+  // Handle switching Audio Tracks
+  const handleSelectAudioTrack = (trackId: string) => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const mediaAudioTracks = (video as any).audioTracks;
+    if (!mediaAudioTracks) return;
+
+    for (let i = 0; i < mediaAudioTracks.length; i++) {
+      const at = mediaAudioTracks[i];
+      const atId = at.id || String(i);
+      at.enabled = atId === trackId;
+    }
+    setSelectedAudioTrackId(trackId);
+  };
 
   // Android TV Remote Control Keyboard Listener
   useEffect(() => {
@@ -119,6 +281,16 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
       resetHideTimer();
       const video = videoRef.current;
       if (!video) return;
+
+      // When modal is open, let modal handle its own navigation
+      if (isTrackModalOpen) {
+        if (e.key === 'Escape' || e.key === 'Backspace' || e.keyCode === 27 || e.keyCode === 4) {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsTrackModalOpen(false);
+        }
+        return;
+      }
 
       switch (e.key) {
         case 'Escape':
@@ -140,27 +312,31 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
           break;
 
         case 'ArrowRight':
-          // Seek forward 10s
           e.preventDefault();
           video.currentTime = Math.min(video.duration, video.currentTime + 10);
           break;
 
         case 'ArrowLeft':
-          // Seek back 10s
           e.preventDefault();
           video.currentTime = Math.max(0, video.currentTime - 10);
           break;
 
         case 'ArrowUp':
-          // Volume up
           e.preventDefault();
           video.volume = Math.min(1, video.volume + 0.1);
           break;
 
         case 'ArrowDown':
-          // Volume down
           e.preventDefault();
           video.volume = Math.max(0, video.volume - 0.1);
+          break;
+
+        case 'c':
+        case 'C':
+        case 's':
+        case 'S':
+          e.preventDefault();
+          setIsTrackModalOpen(true);
           break;
 
         default:
@@ -173,7 +349,7 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
       window.removeEventListener('keydown', handleKeyDown, true);
       if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
     };
-  }, [onClose, resetHideTimer]);
+  }, [onClose, resetHideTimer, isTrackModalOpen]);
 
   const togglePlay = () => {
     const video = videoRef.current;
@@ -197,6 +373,14 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
+  // Compute CSS for Subtitles (::cue)
+  const fontSizes = {
+    small: '1.4rem',
+    medium: '1.9rem',
+    large: '2.5rem',
+    xlarge: '3.2rem'
+  };
+
   return (
     <div
       style={{
@@ -212,11 +396,25 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
       onMouseMove={resetHideTimer}
       onClick={resetHideTimer}
     >
+      {/* Dynamic Subtitle Style Injection for ::cue */}
+      <style>{`
+        video::cue {
+          font-size: ${fontSizes[subtitleSettings.fontSize]} !important;
+          color: ${subtitleSettings.color} !important;
+          background-color: ${subtitleSettings.backgroundColor} !important;
+          font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
+          font-weight: 600 !important;
+          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0,0,0,0.8) !important;
+          line-height: 1.4 !important;
+        }
+      `}</style>
+
       {/* Video Tag */}
       <video
         ref={videoRef}
         src={streamUrl}
         playsInline
+        crossOrigin="anonymous"
         style={{
           width: '100%',
           height: '100%',
@@ -249,38 +447,62 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
           justifyContent: 'space-between',
           padding: '32px 40px',
           background: showControls
-            ? 'linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.2) 30%, rgba(0,0,0,0.2) 70%, rgba(0,0,0,0.9) 100%)'
+            ? 'linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.2) 30%, rgba(0,0,0,0.2) 70%, rgba(0,0,0,0.92) 100%)'
             : 'transparent',
           opacity: showControls ? 1 : 0,
           pointerEvents: showControls ? 'auto' : 'none',
           transition: 'opacity 0.3s ease'
         }}
       >
-        {/* Top Bar: Back & File Name */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+        {/* Top Bar: Back, File Name & External TV Player Button */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <button
+              data-nav-item="true"
+              tabIndex={0}
+              onClick={onClose}
+              style={{
+                background: 'rgba(255, 255, 255, 0.15)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '50%',
+                width: '50px',
+                height: '50px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff'
+              }}
+            >
+              <ArrowLeft size={24} />
+            </button>
+
+            <div style={{ color: '#fff', fontSize: '1.25rem', fontWeight: 600 }}>
+              {file.name}
+            </div>
+          </div>
+
           <button
             data-nav-item="true"
             tabIndex={0}
-            onClick={onClose}
+            onClick={() => setIsTrackModalOpen(true)}
             style={{
-              background: 'rgba(255, 255, 255, 0.15)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              borderRadius: '50%',
-              width: '50px',
-              height: '50px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              color: '#fff'
+              gap: '8px',
+              padding: '10px 18px',
+              borderRadius: '12px',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              background: 'rgba(0, 0, 0, 0.5)',
+              backdropFilter: 'blur(8px)',
+              color: '#38bdf8',
+              fontWeight: 600,
+              fontSize: '0.9rem'
             }}
           >
-            <ArrowLeft size={24} />
+            <Tv size={18} />
+            <span>Player Settings / VLC</span>
           </button>
-
-          <div style={{ color: '#fff', fontSize: '1.25rem', fontWeight: 600 }}>
-            {file.name}
-          </div>
         </div>
 
         {/* Bottom Controls Bar */}
@@ -387,8 +609,55 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
               </div>
             </div>
 
-            {/* Right: Audio Mute */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* Right: Subtitles (CC), Audio, Mute */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              {/* Subtitles Button */}
+              <button
+                data-nav-item="true"
+                tabIndex={0}
+                onClick={() => setIsTrackModalOpen(true)}
+                title="Subtitles & Captions"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  border: selectedSubtitleId !== null ? '2px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.2)',
+                  background: selectedSubtitleId !== null ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.1)',
+                  color: selectedSubtitleId !== null ? '#38bdf8' : '#fff',
+                  fontWeight: 600,
+                  fontSize: '0.85rem'
+                }}
+              >
+                <Subtitles size={18} />
+                <span>{selectedSubtitleId !== null ? 'Subtitles ON' : 'CC'}</span>
+              </button>
+
+              {/* Audio Languages Button */}
+              <button
+                data-nav-item="true"
+                tabIndex={0}
+                onClick={() => setIsTrackModalOpen(true)}
+                title="Audio Languages"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  color: '#fff',
+                  fontWeight: 600,
+                  fontSize: '0.85rem'
+                }}
+              >
+                <Languages size={18} />
+                <span>Audio</span>
+              </button>
+
+              {/* Audio Mute */}
               <button
                 data-nav-item="true"
                 tabIndex={0}
@@ -411,7 +680,24 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Track & Subtitle Settings Dialog */}
+      <TrackSettingsModal
+        isOpen={isTrackModalOpen}
+        onClose={() => setIsTrackModalOpen(false)}
+        subtitleTracks={subtitleTracks}
+        selectedSubtitleId={selectedSubtitleId}
+        onSelectSubtitle={handleSelectSubtitle}
+        subtitleSettings={subtitleSettings}
+        onUpdateSubtitleSettings={setSubtitleSettings}
+        siblingSubFiles={siblingSubFiles}
+        onLoadSiblingSubtitle={handleLoadSiblingSubtitle}
+        audioTracks={audioTracks}
+        selectedAudioTrackId={selectedAudioTrackId}
+        onSelectAudioTrack={handleSelectAudioTrack}
+        streamUrl={streamUrl}
+        fileName={file.name}
+      />
     </div>
   );
 };
-
