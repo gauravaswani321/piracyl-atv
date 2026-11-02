@@ -2,14 +2,15 @@ name: Build Android TV APK
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
   build:
     name: Build Android TV APK
+    if: github.ref_name != 'master'
     runs-on: ubuntu-latest
 
     steps:
