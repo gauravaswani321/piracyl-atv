@@ -4,7 +4,29 @@ import { Capacitor } from '@capacitor/core';
  * Checks if the native TV Android player bridge is available
  */
 export const isNativeTVBridgeAvailable = (): boolean => {
-  return typeof (window as any).TVPlayerBridge?.launchExternalPlayer === 'function';
+  return typeof (window as any).TVPlayerBridge !== 'undefined';
+};
+
+/**
+ * Launches the in-app hardware-accelerated ExoPlayer Activity with zero jitter and Dolby passthrough
+ */
+export const launchNativeExoPlayer = (
+  url: string,
+  title: string = '',
+  fileId: string = '',
+  positionSeconds: number = 0
+): boolean => {
+  const positionMs = Math.max(0, Math.round(positionSeconds * 1000));
+
+  if (isNativeTVBridgeAvailable() && typeof (window as any).TVPlayerBridge?.launchExoPlayer === 'function') {
+    try {
+      (window as any).TVPlayerBridge.launchExoPlayer(url, title, fileId, positionMs);
+      return true;
+    } catch (e) {
+      console.error('TVPlayerBridge.launchExoPlayer error:', e);
+    }
+  }
+  return false;
 };
 
 /**
@@ -19,7 +41,7 @@ export const launchExternalTVPlayer = (
 ): boolean => {
   const positionMs = Math.max(0, Math.round(positionSeconds * 1000));
 
-  if (isNativeTVBridgeAvailable()) {
+  if (isNativeTVBridgeAvailable() && typeof (window as any).TVPlayerBridge?.launchExternalPlayer === 'function') {
     try {
       (window as any).TVPlayerBridge.launchExternalPlayer(url, title, subtitleUrl, positionMs);
       return true;
@@ -39,4 +61,3 @@ export const launchExternalTVPlayer = (
     return false;
   }
 };
-

@@ -24,8 +24,22 @@ public class MainActivity extends BridgeActivity {
             settings.setMediaPlaybackRequiresUserGesture(false);
             settings.setJavaScriptCanOpenWindowsAutomatically(true);
 
-            // Native TV Player Bridge for zero-jitter, full-audio hardware playback (VLC, Just Player, Nova)
+            // Native TV Player Bridge for in-app ExoPlayer and VLC fallback
             webView.addJavascriptInterface(new Object() {
+                @JavascriptInterface
+                public void launchExoPlayer(String url, String title, String fileId, long positionMs) {
+                    try {
+                        Intent intent = new Intent(MainActivity.this, PlayerActivity.class);
+                        intent.putExtra("url", url);
+                        intent.putExtra("title", title);
+                        intent.putExtra("fileId", fileId);
+                        intent.putExtra("position", positionMs);
+                        startActivity(intent);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+
                 @JavascriptInterface
                 public void launchExternalPlayer(String url, String title, String subtitleUrl, long positionMs) {
                     try {

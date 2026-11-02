@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    android:keepScreenOn="true">
+
+    <!-- Native Hardware Accelerated ExoPlayer Surface -->
+    <com.google.android.exoplayer2.ui.StyledPlayerView
+        android:id="@+id/player_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:focusable="true"
+        app:surface_type="surface_view"
+        app:resize_mode="fit"
+        app:show_buffering="when_playing"
+        app:show_timeout="4000"
+        app:use_controller="true" />
+
+    <!-- Top Info and Switch to VLC Button -->
+    <LinearLayout
+        android:id="@+id/top_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:orientation="horizontal"
+        android:padding="24dp"
+        android:background="@android:color/transparent">
+
+        <TextView
+            android:id="@+id/video_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_gravity="center_vertical"
+            android:textColor="#ffffff"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:shadowColor="#000000"
+            android:shadowDx="0"
+            android:shadowDy="2"
+            android:shadowRadius="4" />
+
+        <Button
+            android:id="@+id/btn_switch_vlc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Open in VLC"
+            android:textColor="#0f172a"
+            android:backgroundTint="#38bdf8"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:focusable="true"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Error Fallback Overlay -->
+    <LinearLayout
+        android:id="@+id/error_layout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:padding="32dp"
+        android:background="#E610151f"
+        android:visibility="gone"
+        android:gravity="center">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Playback Error"
+            android:textColor="#f87171"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="12dp" />
+
+        <TextView
+            android:id="@+id/error_message"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#cbd5e1"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:layout_marginBottom="24dp" />
+
+        <Button
+            android:id="@+id/btn_error_vlc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Switch to VLC Player (Dolby / All Formats)"
+            android:textColor="#0f172a"
+            android:backgroundTint="#38bdf8"
+            android:textStyle="bold"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:focusable="true"
+            android:layout_marginBottom="12dp" />
+
+        <Button
+            android:id="@+id/btn_error_close"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Back to Files"
+            android:textColor="#ffffff"
+            android:backgroundTint="#334155"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:focusable="true" />
+    </LinearLayout>
+
+</FrameLayout>
+

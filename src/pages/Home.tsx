@@ -13,7 +13,7 @@ import { VideoGrid } from '../components/VideoGrid';
 import { VideoPlayerView } from '../components/VideoPlayerView';
 import { SettingsModal } from '../components/SettingsModal';
 import { PlayerChoiceModal } from '../components/PlayerChoiceModal';
-import { launchExternalTVPlayer } from '../services/nativePlayer';
+import { launchNativeExoPlayer, launchExternalTVPlayer } from '../services/nativePlayer';
 
 export const Home: React.FC = () => {
   const [config, setConfig] = useState<WorkerConfig>(getStoredConfig);
@@ -68,9 +68,15 @@ export const Home: React.FC = () => {
     setSearchQuery('');
   }, [folderHistory]);
 
-  const startPlayback = (file: DriveFile, engine: 'vlc' | 'web') => {
+  const startPlayback = (file: DriveFile, engine: 'exo' | 'vlc' | 'web') => {
     const streamUrl = getStreamUrl(config, file);
-    if (engine === 'vlc') {
+    if (engine === 'exo') {
+      const launched = launchNativeExoPlayer(streamUrl, file.name, file.id);
+      if (!launched) {
+        // Fallback to web player if not running on native TV (e.g. testing in browser)
+        setActiveVideo({ file, streamUrl });
+      }
+    } else if (engine === 'vlc') {
       launchExternalTVPlayer(streamUrl, file.name);
     } else {
       setActiveVideo({ file, streamUrl });
@@ -79,8 +85,10 @@ export const Home: React.FC = () => {
 
   // Handle Video Selection - prompts or launches according to preference
   const handleFileSelect = (file: DriveFile) => {
-    const engine = config.playerEngine || 'ask';
-    if (engine === 'vlc') {
+    const engine = config.playerEngine || 'exo';
+    if (engine === 'exo') {
+      startPlayback(file, 'exo');
+    } else if (engine === 'vlc') {
       startPlayback(file, 'vlc');
     } else if (engine === 'web') {
       startPlayback(file, 'web');
@@ -89,13 +97,13 @@ export const Home: React.FC = () => {
     }
   };
 
-  const handleChoice = (engine: 'vlc' | 'web', remember: boolean) => {
+  const handleChoice = (engine: 'exo' | 'vlc' | 'web', remember: boolean) => {
     if (!selectedFileForChoice) return;
     const file = selectedFileForChoice;
     setSelectedFileForChoice(null);
 
     if (remember) {
-      const updated = { ...config, playerEngine: engine };
+      const updated: WorkerConfig = { ...config, playerEngine: engine };
       setConfig(updated);
       saveStoredConfig(updated);
     }

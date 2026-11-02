@@ -19,7 +19,7 @@ export interface WorkerConfig {
   baseUrl: string;
   rootPath: string; // e.g. "0:/"
   siteName: string;
-  playerEngine?: 'vlc' | 'web' | 'ask';
+  playerEngine?: 'exo' | 'vlc' | 'web' | 'ask';
 }
 
 export type FileCategory = 'video' | 'folder' | 'audio' | 'image' | 'other';

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Tv, Play, Sparkles, Check, Volume2, ShieldCheck, Film } from 'lucide-react';
+import { Tv, Play, Sparkles, Check, Volume2, ShieldCheck, Film, ExternalLink } from 'lucide-react';
 import { DriveFile } from '../types/drive';
 
 interface PlayerChoiceModalProps {
   isOpen: boolean;
   file: DriveFile | null;
-  onSelectPlayer: (engine: 'vlc' | 'web', remember: boolean) => void;
+  onSelectPlayer: (engine: 'exo' | 'vlc' | 'web', remember: boolean) => void;
   onClose: () => void;
 }
 
@@ -36,7 +36,7 @@ export const PlayerChoiceModal: React.FC<PlayerChoiceModalProps> = ({
       <div
         style={{
           width: '100%',
-          maxWidth: '560px',
+          maxWidth: '580px',
           backgroundColor: '#10151f',
           borderRadius: '20px',
           border: '1px solid #2d3852',
@@ -72,20 +72,20 @@ export const PlayerChoiceModal: React.FC<PlayerChoiceModalProps> = ({
 
         {/* Player Options */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {/* Option 1: VLC / External Player (Recommended) */}
+          {/* Option 1: Native ExoPlayer (Recommended) */}
           <button
             data-nav-item="true"
             tabIndex={0}
             autoFocus
-            onClick={() => onSelectPlayer('vlc', remember)}
+            onClick={() => onSelectPlayer('exo', remember)}
             style={{
               display: 'flex',
               alignItems: 'flex-start',
               gap: '16px',
-              padding: '18px 20px',
+              padding: '16px 20px',
               borderRadius: '14px',
               border: '2px solid #38bdf8',
-              backgroundColor: 'rgba(56, 189, 248, 0.1)',
+              backgroundColor: 'rgba(56, 189, 248, 0.12)',
               color: '#f8fafc',
               cursor: 'pointer',
               textAlign: 'left',
@@ -104,12 +104,12 @@ export const PlayerChoiceModal: React.FC<PlayerChoiceModalProps> = ({
                 flexShrink: 0
               }}
             >
-              <Tv size={26} color="#0f172a" />
+              <Play size={24} color="#0f172a" />
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                 <span style={{ fontWeight: 700, fontSize: '1.05rem', color: '#f8fafc' }}>
-                  VLC / External TV Player
+                  In-App Native ExoPlayer
                 </span>
                 <span
                   style={{
@@ -122,16 +122,59 @@ export const PlayerChoiceModal: React.FC<PlayerChoiceModalProps> = ({
                     letterSpacing: '0.04em'
                   }}
                 >
-                  RECOMMENDED
+                  DEFAULT
                 </span>
               </div>
               <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.85rem', lineHeight: '1.4' }}>
-                Full Dolby audio (AC3 / EAC3 5.1 / DTS), zero jitter, smooth 4K 60fps hardware acceleration, and TV remote support.
+                Runs inside the app. Native hardware SurfaceView (zero jitter), Dolby Digital passthrough, and 1-click switch to VLC.
               </p>
             </div>
           </button>
 
-          {/* Option 2: Built-in Web Player */}
+          {/* Option 2: VLC / External Player */}
+          <button
+            data-nav-item="true"
+            tabIndex={0}
+            onClick={() => onSelectPlayer('vlc', remember)}
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '16px',
+              padding: '16px 20px',
+              borderRadius: '14px',
+              border: '1px solid #2d3852',
+              backgroundColor: '#161d2d',
+              color: '#f8fafc',
+              cursor: 'pointer',
+              textAlign: 'left',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <div
+              style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '12px',
+                background: '#ff8800',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <Tv size={24} color="#ffffff" />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: '1.02rem', color: '#f8fafc', marginBottom: '4px' }}>
+                VLC / Just Player (External)
+              </div>
+              <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.85rem', lineHeight: '1.4' }}>
+                External app fallback for rare audio formats, DTS-HD, or stylized anime subtitles (.ass).
+              </p>
+            </div>
+          </button>
+
+          {/* Option 3: Built-in Web Player */}
           <button
             data-nav-item="true"
             tabIndex={0}
@@ -140,7 +183,7 @@ export const PlayerChoiceModal: React.FC<PlayerChoiceModalProps> = ({
               display: 'flex',
               alignItems: 'flex-start',
               gap: '16px',
-              padding: '16px 20px',
+              padding: '14px 20px',
               borderRadius: '14px',
               border: '1px solid #2d3852',
               backgroundColor: '#161d2d',
@@ -162,14 +205,14 @@ export const PlayerChoiceModal: React.FC<PlayerChoiceModalProps> = ({
                 flexShrink: 0
               }}
             >
-              <Play size={24} color="#38bdf8" />
+              <Film size={22} color="#38bdf8" />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: '1.02rem', color: '#f8fafc', marginBottom: '4px' }}>
+              <div style={{ fontWeight: 700, fontSize: '0.98rem', color: '#f8fafc', marginBottom: '2px' }}>
                 Built-in Web Player
               </div>
-              <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.85rem', lineHeight: '1.4' }}>
-                In-app player with custom subtitle sync, font styling & sizing. Best for videos with AAC or MP3 audio tracks.
+              <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.82rem', lineHeight: '1.4' }}>
+                In-app player with custom subtitle styling and sync adjuster. Requires AAC audio.
               </p>
             </div>
           </button>
@@ -212,7 +255,7 @@ export const PlayerChoiceModal: React.FC<PlayerChoiceModalProps> = ({
             >
               {remember && <Check size={14} color="#0f172a" strokeWidth={3} />}
             </div>
-            <span>Remember my choice (can change in Settings)</span>
+            <span>Remember choice (change in Settings)</span>
           </label>
 
           <button
@@ -237,4 +280,3 @@ export const PlayerChoiceModal: React.FC<PlayerChoiceModalProps> = ({
     </div>
   );
 };
-
