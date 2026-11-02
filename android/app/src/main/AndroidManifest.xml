@@ -63,7 +63,7 @@
             android:screenOrientation="sensorLandscape"
             android:hardwareAccelerated="true"
             android:exported="false"
-            android:theme="@style/AppTheme.NoActionBarLaunch" />
+            android:theme="@style/AppTheme.Player" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

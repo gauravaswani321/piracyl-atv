@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
@@ -24,6 +25,7 @@ import com.google.android.exoplayer2.ui.StyledPlayerView;
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSource;
 
 public class PlayerActivity extends AppCompatActivity {
+    private static final String TAG = "PlayerActivity";
 
     private StyledPlayerView playerView;
     private ExoPlayer player;
@@ -43,37 +45,48 @@ public class PlayerActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Keep screen on and full screen landscape
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON | WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        try {
+            // Keep screen on and full screen landscape
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON | WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
-        setContentView(R.layout.activity_player);
+            setContentView(R.layout.activity_player);
 
-        // Read intent data
-        Intent intent = getIntent();
-        if (intent != null) {
-            videoUrl = intent.getStringExtra("url");
-            videoTitle = intent.getStringExtra("title");
-            fileId = intent.getStringExtra("fileId");
-            startPositionMs = intent.getLongExtra("position", 0);
+            // Read intent data
+            Intent intent = getIntent();
+            if (intent != null) {
+                videoUrl = intent.getStringExtra("url");
+                videoTitle = intent.getStringExtra("title");
+                fileId = intent.getStringExtra("fileId");
+                startPositionMs = intent.getLongExtra("position", 0);
+            }
+
+            playerView = findViewById(R.id.player_view);
+            titleView = findViewById(R.id.video_title);
+            btnSwitchVlc = findViewById(R.id.btn_switch_vlc);
+            errorLayout = findViewById(R.id.error_layout);
+            errorMessage = findViewById(R.id.error_message);
+            btnErrorVlc = findViewById(R.id.btn_error_vlc);
+            btnErrorClose = findViewById(R.id.btn_error_close);
+
+            if (videoTitle != null && titleView != null) {
+                titleView.setText(videoTitle);
+            }
+
+            if (btnSwitchVlc != null) {
+                btnSwitchVlc.setOnClickListener(v -> launchVlcHandoff());
+            }
+            if (btnErrorVlc != null) {
+                btnErrorVlc.setOnClickListener(v -> launchVlcHandoff());
+            }
+            if (btnErrorClose != null) {
+                btnErrorClose.setOnClickListener(v -> finish());
+            }
+
+            initExoPlayer();
+        } catch (Throwable t) {
+            Log.e(TAG, "Fatal in PlayerActivity.onCreate", t);
+            launchVlcHandoff();
         }
-
-        playerView = findViewById(R.id.player_view);
-        titleView = findViewById(R.id.video_title);
-        btnSwitchVlc = findViewById(R.id.btn_switch_vlc);
-        errorLayout = findViewById(R.id.error_layout);
-        errorMessage = findViewById(R.id.error_message);
-        btnErrorVlc = findViewById(R.id.btn_error_vlc);
-        btnErrorClose = findViewById(R.id.btn_error_close);
-
-        if (videoTitle != null) {
-            titleView.setText(videoTitle);
-        }
-
-        btnSwitchVlc.setOnClickListener(v -> launchVlcHandoff());
-        btnErrorVlc.setOnClickListener(v -> launchVlcHandoff());
-        btnErrorClose.setOnClickListener(v -> finish());
-
-        initExoPlayer();
     }
 
     private void initExoPlayer() {
@@ -111,6 +124,7 @@ public class PlayerActivity extends AppCompatActivity {
             player.setAudioAttributes(audioAttributes, true);
 
             playerView.setPlayer(player);
+            playerView.requestFocus();
 
             // Setup MediaItem
             MediaItem mediaItem = MediaItem.fromUri(Uri.parse(videoUrl));
@@ -139,7 +153,8 @@ public class PlayerActivity extends AppCompatActivity {
 
             player.play();
 
-        } catch (Exception e) {
+        } catch (Throwable e) {
+            Log.e(TAG, "Failed to initialize ExoPlayer", e);
             showError("Failed to initialize ExoPlayer: " + e.getMessage());
         }
     }
@@ -150,7 +165,9 @@ public class PlayerActivity extends AppCompatActivity {
         }
         if (errorLayout != null) {
             errorLayout.setVisibility(View.VISIBLE);
-            btnErrorVlc.requestFocus();
+            if (btnErrorVlc != null) {
+                btnErrorVlc.requestFocus();
+            }
         }
     }
 
@@ -169,11 +186,19 @@ public class PlayerActivity extends AppCompatActivity {
             }
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
-            Intent chooser = Intent.createChooser(intent, "Play with");
-            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(chooser);
+            // Try VLC directly first
+            intent.setPackage("org.videolan.vlc");
+            try {
+                startActivity(intent);
+            } catch (Exception ex) {
+                // Fallback to system player chooser if VLC not installed
+                intent.setPackage(null);
+                Intent chooser = Intent.createChooser(intent, "Play with");
+                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(chooser);
+            }
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error launching VLC handoff", e);
         }
 
         finish();

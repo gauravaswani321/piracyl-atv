@@ -20,7 +20,7 @@ export const launchNativeExoPlayer = (
 
   if (isNativeTVBridgeAvailable() && typeof (window as any).TVPlayerBridge?.launchExoPlayer === 'function') {
     try {
-      (window as any).TVPlayerBridge.launchExoPlayer(url, title, fileId, positionMs);
+      (window as any).TVPlayerBridge.launchExoPlayer(url, title || '', fileId || '', positionMs || 0);
       return true;
     } catch (e) {
       console.error('TVPlayerBridge.launchExoPlayer error:', e);

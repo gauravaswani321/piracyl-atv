@@ -27,41 +27,52 @@ public class MainActivity extends BridgeActivity {
             // Native TV Player Bridge for in-app ExoPlayer and VLC fallback
             webView.addJavascriptInterface(new Object() {
                 @JavascriptInterface
-                public void launchExoPlayer(String url, String title, String fileId, long positionMs) {
-                    try {
-                        Intent intent = new Intent(MainActivity.this, PlayerActivity.class);
-                        intent.putExtra("url", url);
-                        intent.putExtra("title", title);
-                        intent.putExtra("fileId", fileId);
-                        intent.putExtra("position", positionMs);
-                        startActivity(intent);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
+                public void launchExoPlayer(final String url, final String title, final String fileId, final long positionMs) {
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                Intent intent = new Intent(MainActivity.this, PlayerActivity.class);
+                                intent.putExtra("url", url);
+                                intent.putExtra("title", title);
+                                intent.putExtra("fileId", fileId);
+                                intent.putExtra("position", positionMs);
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                startActivity(intent);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    });
                 }
 
                 @JavascriptInterface
-                public void launchExternalPlayer(String url, String title, String subtitleUrl, long positionMs) {
-                    try {
-                        Intent intent = new Intent(Intent.ACTION_VIEW);
-                        intent.setDataAndType(Uri.parse(url), "video/*");
-                        if (title != null && !title.isEmpty()) {
-                            intent.putExtra("title", title);
-                        }
-                        if (positionMs > 0) {
-                            intent.putExtra("position", positionMs);
-                        }
-                        if (subtitleUrl != null && !subtitleUrl.isEmpty()) {
-                            intent.putExtra("subtitles_location", subtitleUrl);
-                        }
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                public void launchExternalPlayer(final String url, final String title, final String subtitleUrl, final long positionMs) {
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                Intent intent = new Intent(Intent.ACTION_VIEW);
+                                intent.setDataAndType(Uri.parse(url), "video/*");
+                                if (title != null && !title.isEmpty()) {
+                                    intent.putExtra("title", title);
+                                }
+                                if (positionMs > 0) {
+                                    intent.putExtra("position", positionMs);
+                                }
+                                if (subtitleUrl != null && !subtitleUrl.isEmpty()) {
+                                    intent.putExtra("subtitles_location", subtitleUrl);
+                                }
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
-                        Intent chooser = Intent.createChooser(intent, "Play Video With");
-                        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        startActivity(chooser);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
+                                Intent chooser = Intent.createChooser(intent, "Play Video With");
+                                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                startActivity(chooser);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    });
                 }
             }, "TVPlayerBridge");
         }
