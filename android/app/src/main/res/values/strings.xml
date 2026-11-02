@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">PiracyL ATV</string>
+    <string name="title_activity_main">PiracyL ATV</string>
+    <string name="package_name">com.piracyl.atv</string>
+    <string name="custom_url_scheme">com.piracyl.atv</string>
+</resources>

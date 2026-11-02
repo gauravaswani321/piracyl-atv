@@ -1,0 +1,126 @@
+import { DriveFile, WorkerConfig } from '../types/drive';
+
+const DEFAULT_CONFIG_KEY = 'piracyl_worker_config';
+
+export const getStoredConfig = (): WorkerConfig => {
+  const saved = localStorage.getItem(DEFAULT_CONFIG_KEY);
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch {
+      // fallback
+    }
+  }
+  return {
+    baseUrl: 'https://YOUR_WORKER_DOMAIN.workers.dev',
+    rootPath: '0:/',
+    siteName: 'PiracyL ATV'
+  };
+};
+
+export const saveStoredConfig = (config: WorkerConfig): void => {
+  // Strip trailing slashes from baseUrl
+  const cleaned: WorkerConfig = {
+    ...config,
+    baseUrl: config.baseUrl.replace(/\/+$/, '')
+  };
+  localStorage.setItem(DEFAULT_CONFIG_KEY, JSON.stringify(cleaned));
+};
+
+export const getFileCategory = (file: DriveFile): 'folder' | 'video' | 'audio' | 'image' | 'other' => {
+  const mime = (file.mimeType || '').toLowerCase();
+  const name = (file.name || '').toLowerCase();
+
+  if (mime === 'application/vnd.google-apps.folder' || mime.includes('folder')) {
+    return 'folder';
+  }
+  if (
+    mime.startsWith('video/') ||
+    name.endsWith('.mkv') ||
+    name.endsWith('.mp4') ||
+    name.endsWith('.webm') ||
+    name.endsWith('.avi') ||
+    name.endsWith('.mov') ||
+    name.endsWith('.ts')
+  ) {
+    return 'video';
+  }
+  if (mime.startsWith('audio/') || name.endsWith('.mp3') || name.endsWith('.flac') || name.endsWith('.m4a')) {
+    return 'audio';
+  }
+  if (mime.startsWith('image/')) {
+    return 'image';
+  }
+  return 'other';
+};
+
+export const formatFileSize = (bytesOrStr: string | number): string => {
+  if (typeof bytesOrStr === 'string' && isNaN(Number(bytesOrStr))) {
+    return bytesOrStr;
+  }
+  const bytes = Number(bytesOrStr);
+  if (!bytes || bytes <= 0) return '';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
+};
+
+export const fetchFolderContents = async (
+  config: WorkerConfig,
+  folderPath: string,
+  pageIndex: number = 0,
+  password: string = ''
+): Promise<{ files: DriveFile[]; nextPageToken?: string }> => {
+  // Normalize folder path: ensure it doesn't double-slash
+  let relPath = folderPath.trim();
+  if (!relPath.startsWith('/')) {
+    relPath = '/' + relPath;
+  }
+
+  const url = `${config.baseUrl}${relPath}`;
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
+      },
+      body: JSON.stringify({
+        page_index: pageIndex,
+        password: password
+      })
+    });
+
+    if (!res.ok) {
+      throw new Error(`Worker returned status ${res.status}: ${res.statusText}`);
+    }
+
+    const json = await res.json();
+    const files: DriveFile[] = json?.data?.files || [];
+    return {
+      files,
+      nextPageToken: json?.data?.nextPageToken
+    };
+  } catch (err: any) {
+    console.error('fetchFolderContents error:', err);
+    throw err;
+  }
+};
+
+export const getStreamUrl = (config: WorkerConfig, file: DriveFile): string => {
+  let link = file.link || '';
+  if (!link.startsWith('http://') && !link.startsWith('https://')) {
+    if (!link.startsWith('/')) {
+      link = '/' + link;
+    }
+    link = `${config.baseUrl}${link}`;
+  }
+
+  // Append inline=true for direct media streaming headers if not present
+  const separator = link.includes('?') ? '&' : '?';
+  if (!link.includes('inline=')) {
+    link = `${link}${separator}inline=true`;
+  }
+  return link;
+};

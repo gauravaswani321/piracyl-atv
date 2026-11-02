@@ -1,0 +1,156 @@
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { IonPage, IonContent } from '@ionic/react';
+import { DriveFile, DriveFolder, WorkerConfig } from '../types/drive';
+import {
+  getStoredConfig,
+  saveStoredConfig,
+  fetchFolderContents,
+  getStreamUrl
+} from '../services/workerApi';
+import { launchNativePlayer } from '../services/videoPlayerService';
+import { useSpatialNavigation } from '../hooks/useSpatialNavigation';
+import { HeaderBar } from '../components/HeaderBar';
+import { VideoGrid } from '../components/VideoGrid';
+import { VideoPlayerView } from '../components/VideoPlayerView';
+import { SettingsModal } from '../components/SettingsModal';
+
+export const Home: React.FC = () => {
+  const [config, setConfig] = useState<WorkerConfig>(getStoredConfig);
+  const [currentFolder, setCurrentFolder] = useState<DriveFolder>({
+    id: 'root',
+    name: 'Root Drive',
+    path: config.rootPath || '0:/'
+  });
+  const [folderHistory, setFolderHistory] = useState<DriveFolder[]>([]);
+  const [files, setFiles] = useState<DriveFile[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeVideo, setActiveVideo] = useState<{ file: DriveFile; streamUrl: string } | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Load contents of current folder
+  const loadFolder = useCallback(async (folderPath: string) => {
+    setLoading(true);
+    try {
+      const res = await fetchFolderContents(config, folderPath);
+      setFiles(res.files);
+    } catch (err) {
+      console.error('Error fetching folder:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [config]);
+
+  useEffect(() => {
+    loadFolder(currentFolder.path);
+  }, [currentFolder.path, loadFolder]);
+
+  // Handle folder navigation
+  const handleFolderSelect = (folderFile: DriveFile) => {
+    setFolderHistory((prev) => [...prev, currentFolder]);
+    setCurrentFolder({
+      id: folderFile.id,
+      name: folderFile.name,
+      path: folderFile.link || `${currentFolder.path}${folderFile.name}/`
+    });
+    setSearchQuery('');
+  };
+
+  const handleNavigateUp = useCallback(() => {
+    if (folderHistory.length === 0) return;
+    const previous = folderHistory[folderHistory.length - 1];
+    setFolderHistory((prev) => prev.slice(0, -1));
+    setCurrentFolder(previous);
+    setSearchQuery('');
+  }, [folderHistory]);
+
+  // Handle Video Selection
+  const handleFileSelect = async (file: DriveFile) => {
+    const streamUrl = getStreamUrl(config, file);
+
+    // Try native ExoPlayer on Android TV first
+    const launchedNative = await launchNativePlayer({
+      url: streamUrl,
+      title: file.name,
+      file
+    });
+
+    // If on web or native failed, open full-screen fallback player
+    if (!launchedNative) {
+      setActiveVideo({ file, streamUrl });
+    }
+  };
+
+  // Back button handling
+  const handleBack = useCallback(() => {
+    if (activeVideo) {
+      setActiveVideo(null);
+      return;
+    }
+    if (isSettingsOpen) {
+      setIsSettingsOpen(false);
+      return;
+    }
+    if (folderHistory.length > 0) {
+      handleNavigateUp();
+      return;
+    }
+  }, [activeVideo, isSettingsOpen, folderHistory.length, handleNavigateUp]);
+
+  // Spatial Navigation for TV Remote
+  useSpatialNavigation({
+    active: !activeVideo,
+    onBack: handleBack
+  });
+
+  // Filter files by search query
+  const filteredFiles = useMemo(() => {
+    if (!searchQuery.trim()) return files;
+    const q = searchQuery.toLowerCase();
+    return files.filter((f) => (f.name || '').toLowerCase().includes(q));
+  }, [files, searchQuery]);
+
+  return (
+    <IonPage>
+      <IonContent fullscreen style={{ '--background': '#0b0e14' }}>
+        <HeaderBar
+          currentFolder={currentFolder}
+          folderHistory={folderHistory}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onNavigateUp={handleNavigateUp}
+          onRefresh={() => loadFolder(currentFolder.path)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          loading={loading}
+        />
+
+        <VideoGrid
+          files={filteredFiles}
+          loading={loading}
+          onFileSelect={handleFileSelect}
+          onFolderSelect={handleFolderSelect}
+        />
+
+        {/* Video Player Modal/View */}
+        {activeVideo && (
+          <VideoPlayerView
+            file={activeVideo.file}
+            streamUrl={activeVideo.streamUrl}
+            onClose={() => setActiveVideo(null)}
+          />
+        )}
+
+        {/* Settings Modal */}
+        <SettingsModal
+          config={config}
+          isOpen={isSettingsOpen}
+          onSave={(newConfig) => {
+            setConfig(newConfig);
+            saveStoredConfig(newConfig);
+          }}
+          onClose={() => setIsSettingsOpen(false)}
+        />
+      </IonContent>
+    </IonPage>
+  );
+};

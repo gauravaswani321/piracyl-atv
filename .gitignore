@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+build/
+android/app/build/
+android/build/
+android/.gradle/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+
+# Environment and IDE
+.env
+.env.local
+.env.production
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+
+# Capacitor
+capacitor.config.json

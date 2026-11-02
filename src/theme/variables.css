@@ -1,0 +1,70 @@
+/* Ionic & Custom Android TV Theme Variables */
+
+:root {
+  --ion-font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+
+  /* Android TV Dark Theme */
+  --ion-background-color: #0b0e14;
+  --ion-background-color-rgb: 11, 14, 20;
+
+  --ion-text-color: #f1f5f9;
+  --ion-text-color-rgb: 241, 245, 249;
+
+  --ion-color-step-50: #10151f;
+  --ion-color-step-100: #151b28;
+  --ion-color-step-150: #1a2232;
+  --ion-color-step-200: #20293d;
+  --ion-color-step-300: #2d3852;
+  --ion-color-step-400: #3b4967;
+  --ion-color-step-500: #495a7d;
+
+  --ion-color-primary: #38bdf8;
+  --ion-color-primary-rgb: 56, 189, 248;
+  --ion-color-primary-contrast: #0f172a;
+  --ion-color-primary-contrast-rgb: 15, 23, 42;
+  --ion-color-primary-shade: #0284c7;
+  --ion-color-primary-tint: #7dd3fc;
+}
+
+body {
+  background-color: #0b0e14;
+  color: #f1f5f9;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* TV Navigation Focus Ring */
+[data-nav-item] {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, outline 0.15s ease, border-color 0.2s ease;
+  outline: none;
+  cursor: pointer;
+}
+
+[data-nav-item]:focus,
+[data-nav-item]:focus-visible {
+  outline: 3px solid #38bdf8 !important;
+  box-shadow: 0 0 28px rgba(56, 189, 248, 0.55), 0 8px 24px rgba(0, 0, 0, 0.6) !important;
+  transform: scale(1.05) translateZ(0) !important;
+  border-color: #38bdf8 !important;
+  z-index: 30 !important;
+}
+
+/* Custom Scrollbar for Leanback Experience */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
