@@ -18,7 +18,7 @@ export const Home: React.FC = () => {
   const [config, setConfig] = useState<WorkerConfig>(getStoredConfig);
   const [currentFolder, setCurrentFolder] = useState<DriveFolder>({
     id: 'root',
-    name: 'Root Drive',
+    name: '',
     path: config.rootPath || '0:/'
   });
   const [folderHistory, setFolderHistory] = useState<DriveFolder[]>([]);

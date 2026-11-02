@@ -90,23 +90,25 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
           </button>
         )}
 
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            color: '#94a3b8',
-            fontSize: '0.95rem',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          <HardDrive size={16} />
-          <span style={{ color: '#e2e8f0', fontWeight: 600 }}>
-            {currentFolder.path === '0:/' ? 'Root Drive' : currentFolder.name || currentFolder.path}
-          </span>
-        </div>
+        {canGoUp && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              color: '#94a3b8',
+              fontSize: '0.95rem',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <HardDrive size={16} />
+            <span style={{ color: '#e2e8f0', fontWeight: 600 }}>
+              {currentFolder.name || currentFolder.path}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Right: Controls & Search */}
