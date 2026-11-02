@@ -371,7 +371,8 @@ public class PlayerActivity extends AppCompatActivity {
                     player.setTrackSelectionParameters(
                             player.getTrackSelectionParameters()
                                     .buildUpon()
-                                    .setOverrideForType(override)
+                                    .clearOverridesOfType(C.TRACK_TYPE_AUDIO)
+                                    .addOverride(override)
                                     .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
                                     .build()
                     );
@@ -436,8 +437,9 @@ public class PlayerActivity extends AppCompatActivity {
                         player.setTrackSelectionParameters(
                                 player.getTrackSelectionParameters()
                                         .buildUpon()
+                                        .clearOverridesOfType(C.TRACK_TYPE_TEXT)
+                                        .addOverride(override)
                                         .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
-                                        .setOverrideForType(override)
                                         .build()
                         );
                     }

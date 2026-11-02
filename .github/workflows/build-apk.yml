@@ -1,11 +1,7 @@
 name: Build Android TV APK
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-  workflow_dispatch:
+  workflow_dispatch: # Only manual trigger via GitHub Actions UI (disabled on git push)
 
 jobs:
   build:

@@ -1,0 +1,45 @@
+version: 2.1
+
+jobs:
+  build-apk:
+    docker:
+      - image: cimg/android:2024.01-node
+    resource_class: large
+
+    steps:
+      - checkout
+
+      - run:
+          name: Install Dependencies
+          command: npm ci
+
+      - run:
+          name: Build Web Assets
+          command: npm run build
+
+      - run:
+          name: Sync Capacitor to Android
+          command: npx cap sync android
+
+      - run:
+          name: Make Gradlew Executable
+          command: chmod +x ./android/gradlew
+
+      - run:
+          name: Assemble Android TV Debug APK
+          command: |
+            cd android
+            ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - store_artifacts:
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          destination: piracyl-atv-debug.apk
+
+workflows:
+  build-and-deliver:
+    jobs:
+      - build-apk:
+          filters:
+            branches:
+              only:
+                - main
