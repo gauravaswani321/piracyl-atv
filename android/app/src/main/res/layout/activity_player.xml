@@ -16,7 +16,7 @@
         app:resize_mode="fit"
         app:show_buffering="when_playing"
         app:show_subtitle_button="true"
-        app:show_timeout="4000"
+        app:show_timeout="3500"
         app:use_controller="true" />
 
     <!-- Top Info, Audio, Subtitle & VLC Controls -->

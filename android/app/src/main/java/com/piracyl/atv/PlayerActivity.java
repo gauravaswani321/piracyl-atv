@@ -187,9 +187,7 @@ public class PlayerActivity extends AppCompatActivity {
                         topOverlay.setVisibility(visibility);
                     }
                     if (visibility == View.VISIBLE) {
-                        if (player != null && player.isPlaying()) {
-                            scheduleHideControls(3500);
-                        }
+                        scheduleHideControls(3500);
                     } else {
                         hideHandler.removeCallbacks(hideControlsRunnable);
                         playerView.requestFocus();
@@ -225,17 +223,14 @@ public class PlayerActivity extends AppCompatActivity {
                 @Override
                 public void onIsPlayingChanged(boolean isPlaying) {
                     if (isPlaying) {
-                        scheduleHideControls(2500);
-                    } else {
-                        showControls();
-                        hideHandler.removeCallbacks(hideControlsRunnable);
+                        scheduleHideControls(3500);
                     }
                 }
 
                 @Override
                 public void onPlaybackStateChanged(int playbackState) {
                     if (playbackState == Player.STATE_READY && player != null && player.getPlayWhenReady()) {
-                        scheduleHideControls(2500);
+                        scheduleHideControls(3500);
                     } else if (playbackState == Player.STATE_ENDED) {
                         saveProgress(0); // clear progress
                         showControls();
@@ -255,6 +250,7 @@ public class PlayerActivity extends AppCompatActivity {
             }
 
             player.play();
+            scheduleHideControls(3500);
 
         } catch (Throwable e) {
             Log.e(TAG, "Failed to initialize ExoPlayer", e);
@@ -591,8 +587,8 @@ public class PlayerActivity extends AppCompatActivity {
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
-            if (isControlsVisible() && player != null && player.isPlaying()) {
-                scheduleHideControls(4000);
+            if (isControlsVisible()) {
+                scheduleHideControls(3500);
             }
         }
         return super.dispatchKeyEvent(event);
@@ -605,15 +601,27 @@ public class PlayerActivity extends AppCompatActivity {
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
+                if (!isControlsVisible()) {
+                    showControls();
+                    scheduleHideControls(3500);
+                    return true;
+                }
+                View focused = getCurrentFocus();
+                if (focused == null || focused == playerView) {
+                    hideControls();
+                    return true;
+                }
+                scheduleHideControls(3500);
+                break; // let focused button (audio, subtitles, play/pause) handle click
+
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
                 if (player.isPlaying()) {
                     player.pause();
-                    showControls();
-                    hideHandler.removeCallbacks(hideControlsRunnable);
                 } else {
                     player.play();
-                    scheduleHideControls(2000);
                 }
+                showControls();
+                scheduleHideControls(3500);
                 return true;
 
             case KeyEvent.KEYCODE_DPAD_UP:
@@ -621,7 +629,7 @@ public class PlayerActivity extends AppCompatActivity {
                 if (btnAudioTracks != null) {
                     btnAudioTracks.requestFocus();
                 }
-                scheduleHideControls(5000);
+                scheduleHideControls(4000);
                 return true;
 
             case KeyEvent.KEYCODE_DPAD_DOWN:
@@ -637,14 +645,14 @@ public class PlayerActivity extends AppCompatActivity {
             case KeyEvent.KEYCODE_MEDIA_REWIND:
                 player.seekBack();
                 showControls();
-                scheduleHideControls(3000);
+                scheduleHideControls(3500);
                 return true;
 
             case KeyEvent.KEYCODE_DPAD_RIGHT:
             case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
                 player.seekForward();
                 showControls();
-                scheduleHideControls(3000);
+                scheduleHideControls(3500);
                 return true;
 
             case KeyEvent.KEYCODE_CAPTIONS:
