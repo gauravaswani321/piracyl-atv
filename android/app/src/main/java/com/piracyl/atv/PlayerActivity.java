@@ -4,6 +4,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
@@ -39,6 +41,7 @@ public class PlayerActivity extends AppCompatActivity {
     private static final String TAG = "PlayerActivity";
 
     private StyledPlayerView playerView;
+    private View topOverlay;
     private ExoPlayer player;
     private TextView titleView;
     private Button btnAudioTracks;
@@ -48,6 +51,9 @@ public class PlayerActivity extends AppCompatActivity {
     private TextView errorMessage;
     private Button btnErrorVlc;
     private Button btnErrorClose;
+
+    private final Handler hideHandler = new Handler(Looper.getMainLooper());
+    private final Runnable hideControlsRunnable = this::hideControls;
 
     private String videoUrl = "";
     private String videoTitle = "";
@@ -100,6 +106,7 @@ public class PlayerActivity extends AppCompatActivity {
             }
 
             playerView = findViewById(R.id.player_view);
+            topOverlay = findViewById(R.id.top_overlay);
             titleView = findViewById(R.id.video_title);
             btnAudioTracks = findViewById(R.id.btn_audio_tracks);
             btnSubtitleTracks = findViewById(R.id.btn_subtitle_tracks);
@@ -173,6 +180,23 @@ public class PlayerActivity extends AppCompatActivity {
             playerView.setPlayer(player);
             playerView.requestFocus();
 
+            playerView.setControllerVisibilityListener(new StyledPlayerView.ControllerVisibilityListener() {
+                @Override
+                public void onVisibilityChanged(int visibility) {
+                    if (topOverlay != null) {
+                        topOverlay.setVisibility(visibility);
+                    }
+                    if (visibility == View.VISIBLE) {
+                        if (player != null && player.isPlaying()) {
+                            scheduleHideControls(3500);
+                        }
+                    } else {
+                        hideHandler.removeCallbacks(hideControlsRunnable);
+                        playerView.requestFocus();
+                    }
+                }
+            });
+
             // Setup MediaItem (with optional external subtitle)
             MediaItem.Builder mediaItemBuilder = new MediaItem.Builder()
                     .setUri(Uri.parse(videoUrl));
@@ -199,9 +223,22 @@ public class PlayerActivity extends AppCompatActivity {
                 }
 
                 @Override
+                public void onIsPlayingChanged(boolean isPlaying) {
+                    if (isPlaying) {
+                        scheduleHideControls(2500);
+                    } else {
+                        showControls();
+                        hideHandler.removeCallbacks(hideControlsRunnable);
+                    }
+                }
+
+                @Override
                 public void onPlaybackStateChanged(int playbackState) {
-                    if (playbackState == Player.STATE_ENDED) {
+                    if (playbackState == Player.STATE_READY && player != null && player.getPlayWhenReady()) {
+                        scheduleHideControls(2500);
+                    } else if (playbackState == Player.STATE_ENDED) {
                         saveProgress(0); // clear progress
+                        showControls();
                     }
                 }
 
@@ -360,9 +397,10 @@ public class PlayerActivity extends AppCompatActivity {
             items[i] = audioOptions.get(i).label;
         }
 
-        new AlertDialog.Builder(this)
+        hideHandler.removeCallbacks(hideControlsRunnable);
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Select Audio Language")
-                .setSingleChoiceItems(items, selectedIndex, (dialog, which) -> {
+                .setSingleChoiceItems(items, selectedIndex, (d, which) -> {
                     AudioTrackOption option = audioOptions.get(which);
                     TrackSelectionOverride override = new TrackSelectionOverride(
                             option.group.getMediaTrackGroup(),
@@ -377,10 +415,17 @@ public class PlayerActivity extends AppCompatActivity {
                                     .build()
                     );
                     updateTrackButtonLabels();
-                    dialog.dismiss();
+                    d.dismiss();
                 })
                 .setNegativeButton("Cancel", null)
-                .show();
+                .create();
+
+        dialog.setOnDismissListener(d -> {
+            if (player != null && player.isPlaying()) {
+                scheduleHideControls(3000);
+            }
+        });
+        dialog.show();
     }
 
     private void showSubtitleTrackDialog() {
@@ -417,9 +462,10 @@ public class PlayerActivity extends AppCompatActivity {
             items[i] = subOptions.get(i).label;
         }
 
-        new AlertDialog.Builder(this)
+        hideHandler.removeCallbacks(hideControlsRunnable);
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Select Subtitles")
-                .setSingleChoiceItems(items, selectedIndex, (dialog, which) -> {
+                .setSingleChoiceItems(items, selectedIndex, (d, which) -> {
                     SubtitleTrackOption option = subOptions.get(which);
                     if (option.group == null || which == 0) {
                         player.setTrackSelectionParameters(
@@ -444,10 +490,17 @@ public class PlayerActivity extends AppCompatActivity {
                         );
                     }
                     updateTrackButtonLabels();
-                    dialog.dismiss();
+                    d.dismiss();
                 })
                 .setNegativeButton("Cancel", null)
-                .show();
+                .create();
+
+        dialog.setOnDismissListener(d -> {
+            if (player != null && player.isPlaying()) {
+                scheduleHideControls(3000);
+            }
+        });
+        dialog.show();
     }
 
     private void showError(String msg) {
@@ -501,6 +554,50 @@ public class PlayerActivity extends AppCompatActivity {
         prefs.edit().putLong(fileId, positionMs).apply();
     }
 
+    private boolean isControlsVisible() {
+        return (playerView != null && playerView.isControllerFullyVisible())
+                || (topOverlay != null && topOverlay.getVisibility() == View.VISIBLE);
+    }
+
+    private void showControls() {
+        if (topOverlay != null) {
+            topOverlay.setVisibility(View.VISIBLE);
+        }
+        if (playerView != null) {
+            playerView.showController();
+        }
+    }
+
+    private void hideControls() {
+        hideHandler.removeCallbacks(hideControlsRunnable);
+        if (topOverlay != null) {
+            topOverlay.setVisibility(View.GONE);
+        }
+        if (playerView != null) {
+            playerView.hideController();
+            View currentFocus = getCurrentFocus();
+            if (currentFocus != null && currentFocus != playerView) {
+                currentFocus.clearFocus();
+            }
+            playerView.requestFocus();
+        }
+    }
+
+    private void scheduleHideControls(long delayMs) {
+        hideHandler.removeCallbacks(hideControlsRunnable);
+        hideHandler.postDelayed(hideControlsRunnable, delayMs);
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            if (isControlsVisible() && player != null && player.isPlaying()) {
+                scheduleHideControls(4000);
+            }
+        }
+        return super.dispatchKeyEvent(event);
+    }
+
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (player == null) return super.onKeyDown(keyCode, event);
@@ -511,29 +608,43 @@ public class PlayerActivity extends AppCompatActivity {
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
                 if (player.isPlaying()) {
                     player.pause();
+                    showControls();
+                    hideHandler.removeCallbacks(hideControlsRunnable);
                 } else {
                     player.play();
+                    scheduleHideControls(2000);
                 }
-                playerView.showController();
                 return true;
 
             case KeyEvent.KEYCODE_DPAD_UP:
-                playerView.showController();
+                showControls();
                 if (btnAudioTracks != null) {
                     btnAudioTracks.requestFocus();
+                }
+                scheduleHideControls(5000);
+                return true;
+
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+                if (isControlsVisible()) {
+                    hideControls();
+                } else {
+                    showControls();
+                    scheduleHideControls(3500);
                 }
                 return true;
 
             case KeyEvent.KEYCODE_DPAD_LEFT:
             case KeyEvent.KEYCODE_MEDIA_REWIND:
                 player.seekBack();
-                playerView.showController();
+                showControls();
+                scheduleHideControls(3000);
                 return true;
 
             case KeyEvent.KEYCODE_DPAD_RIGHT:
             case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
                 player.seekForward();
-                playerView.showController();
+                showControls();
+                scheduleHideControls(3000);
                 return true;
 
             case KeyEvent.KEYCODE_CAPTIONS:
@@ -546,6 +657,10 @@ public class PlayerActivity extends AppCompatActivity {
                 return true;
 
             case KeyEvent.KEYCODE_BACK:
+                if (isControlsVisible()) {
+                    hideControls();
+                    return true;
+                }
                 finish();
                 return true;
         }
@@ -554,6 +669,7 @@ public class PlayerActivity extends AppCompatActivity {
     }
 
     private void releasePlayer() {
+        hideHandler.removeCallbacks(hideControlsRunnable);
         if (player != null) {
             if (player.getDuration() > 0 && player.getCurrentPosition() > 0) {
                 saveProgress(player.getCurrentPosition());

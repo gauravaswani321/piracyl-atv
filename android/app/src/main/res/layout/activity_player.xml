@@ -27,7 +27,8 @@
         android:layout_gravity="top"
         android:orientation="horizontal"
         android:padding="24dp"
-        android:background="@android:color/transparent">
+        android:background="#99000000"
+        android:animateLayoutChanges="true">
 
         <TextView
             android:id="@+id/video_title"
@@ -56,6 +57,7 @@
             android:paddingEnd="16dp"
             android:layout_marginEnd="10dp"
             android:focusable="true"
+            android:nextFocusDown="@+id/player_view"
             android:textStyle="bold" />
 
         <Button
@@ -69,6 +71,7 @@
             android:paddingEnd="16dp"
             android:layout_marginEnd="10dp"
             android:focusable="true"
+            android:nextFocusDown="@+id/player_view"
             android:textStyle="bold" />
 
         <Button
@@ -81,6 +84,7 @@
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
             android:focusable="true"
+            android:nextFocusDown="@+id/player_view"
             android:textStyle="bold" />
     </LinearLayout>
 
